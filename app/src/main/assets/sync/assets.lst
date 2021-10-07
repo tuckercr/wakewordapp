@@ -1,0 +1,8 @@
+models/lm/words.dic
+models/en-us-ptm/feat.params
+models/en-us-ptm/mdef
+models/en-us-ptm/means
+models/en-us-ptm/noisedict
+models/en-us-ptm/sendump
+models/en-us-ptm/transition_matrices
+models/en-us-ptm/variances

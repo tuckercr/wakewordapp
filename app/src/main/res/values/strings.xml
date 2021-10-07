@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">ZamZam</string>
+    <!-- This must be a hotword in arrays.xml and words.dic (which must have an md5 sum in words.dic.md5) -->
+    <string name="default_wake_word">sami</string>
+    <string name="seek_bar_title">Sensitivity:</string>
+    <string name="return_label">Go Back</string>
+    <string name="listening_for_hotword">Listening for hotword</string>
+    <string name="channel_name_service">Background Service Notifications</string>
+    <string name="channel_desc_service">Alerts you when the app is listening</string>
+    <string name="channel_name_hotword">Hot Word Notifications</string>
+    <string name="channel_desc_hotword">Alerts you when the app hears a hot word</string>
+    <string name="hotword_detected">Hotword Detected!</string>
+    <string name="the_hotword_was_heard_click_to_return_to_test_app">Click here to return to app.</string>
+    <string name="the_test_app_is_still_running">ZamZam is listening in the background</string>
+    <string name="click_below_to_return">Click the button to test again.</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="do_you_want_to_stop_the_recognizer">Do you want to stop the recognizer?</string>
+</resources>

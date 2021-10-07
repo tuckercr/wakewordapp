@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+
+    <!-- These can be joined together, ie "ok sami" -->
+    <!-- Don't capitalize them - they have to match words.dic -->
+    <!-- <string-array name="hotwords">
+         <item>george</item>
+         <item>john</item>
+         <item>paul</item>
+         <item>ringo</item>
+         <item>sami</item>
+         <item>hey george</item>
+     </string-array>-->
+</resources>
