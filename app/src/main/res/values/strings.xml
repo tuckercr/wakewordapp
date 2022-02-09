@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">ZamZam</string>
-    <!-- This must be a hotword in arrays.xml and words.dic (which must have an md5 sum in words.dic.md5) -->
-    <string name="default_wake_word">sami</string>
+    <string name="default_wake_word"></string>
     <string name="seek_bar_title">Sensitivity:</string>
     <string name="return_label">Go Back</string>
     <string name="listening_for_hotword">Listening for hotword</string>

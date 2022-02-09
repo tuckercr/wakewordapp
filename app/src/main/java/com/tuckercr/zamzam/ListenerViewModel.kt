@@ -176,7 +176,6 @@ class ListenerViewModel(application: Application) : AndroidViewModel(application
         // Load the wake word from shared prefs
         var wakeWordString = wakeWord.get()
         if (wakeWordString == null || wakeWordString.isEmpty()) {
-            // TODO don't default to sami
             wakeWordString = instance!!.getString(
                 PrefsManager.KEY_WAKE_WORD,
                 getApplication<Application>().getString(R.string.default_wake_word)
