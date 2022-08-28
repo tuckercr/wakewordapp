@@ -4,7 +4,7 @@ An POC app demonstrating on-device wake word voice recognition using the PocketS
 
 The app lets you select a wake word, and then - even with the app in the background or the phone in your pocket - it notifies you noisily and with vibration when that word is head.
 
-The sensitivity of the voice reco engine is tunable to balance between false positives and not heading the word.
+The sensitivity of the voice reco engine is tunable to balance between false positives and not hearing the word.
 
 The idea of this app is that it could be useful for someone that is hearing impaired to help them when someone says their names.  The app does not use or require any kind of network connection for the voice recognition.
 
@@ -22,8 +22,8 @@ The idea of this app is that it could be useful for someone that is hearing impa
 ### Main Page
 ![main](screenshots/main.png)
 
-### Foreground Services
+### Foreground Service
 ![service](screenshots/fg_service.png)
 
-### Upon Heading Wake Word
+### Wake Word Triggered
 ![wake word](screenshots/triggered.png)
