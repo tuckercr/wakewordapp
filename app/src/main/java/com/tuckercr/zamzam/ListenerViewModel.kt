@@ -3,9 +3,14 @@ package com.tuckercr.zamzam
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Application
+import android.app.NotificationManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.SensorPrivacyManager
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
@@ -19,13 +24,12 @@ import edu.cmu.pocketsphinx.SpeechRecognizer
 import edu.cmu.pocketsphinx.SpeechRecognizerSetup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,18 +51,19 @@ data class ListenerUiState(
 )
 
 @HiltViewModel
-class ListenerViewModel
-@Inject
-constructor(
+class ListenerViewModel @Inject constructor(
     private val application: Application,
     private val preferencesManager: PreferencesManager,
+    private val chimePlayer: ChimePlayer,
+    private val dictionaryRepository: DictionaryRepository,
     @SuppressLint("NewApi") private val sensorPrivacyManager: SensorPrivacyManager?,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ListenerUiState())
     val uiState: StateFlow<ListenerUiState> = _uiState.asStateFlow()
 
-    private val _chimeEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val chimeEvent: SharedFlow<Unit> = _chimeEvent.asSharedFlow()
+    val onboardingCompleteFlow: StateFlow<Boolean?> =
+        preferencesManager.onboardingCompleteFlow
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private var recognizer: SpeechRecognizer? = null
     private var setupJob: Job? = null
@@ -80,8 +85,9 @@ constructor(
                 val wakeWord = _uiState.value.wakeWord
                 if (text == wakeWord || text.contains(wakeWord)) {
                     _uiState.update { it.copy(wakeWordTriggered = text, micState = MicState.OFF) }
-                    _chimeEvent.tryEmit(Unit)
-                    // Stop the recognizer so no further partial results fire until setup() is called again
+                    chimePlayer.play()
+                    vibrateForWakeWord()
+                    postWakeWordNotification()
                     viewModelScope.launch(Dispatchers.IO) {
                         recognizer?.teardown()
                         recognizer = null
@@ -107,7 +113,7 @@ constructor(
                 val wakeWord = word ?: application.getString(R.string.default_wake_word)
                 if (_uiState.value.wakeWord != wakeWord) {
                     _uiState.update { it.copy(wakeWord = wakeWord) }
-                    Log.d(TAG, "wakeword updated to $wakeWord")
+                    Log.d(TAG, "wakeWord updated to $wakeWord")
                     shutdownRecognizer()
                     setup()
                 }
@@ -123,14 +129,13 @@ constructor(
                 Manifest.permission.RECORD_AUDIO,
             ) == PackageManager.PERMISSION_GRANTED
 
-        // TODO This is always false
+        // Checking isSensorPrivacyEnabled requires the restricted OBSERVE_SENSOR_PRIVACY permission
         val isPrivacyEnabled = false
         var supportsToggle = false
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             sensorPrivacyManager?.let {
                 supportsToggle = it.supportsSensorToggle(SensorPrivacyManager.Sensors.MICROPHONE)
-                // Removed isSensorPrivacyEnabled check as it requires restricted permission android.permission.OBSERVE_SENSOR_PRIVACY
             }
         }
 
@@ -145,7 +150,7 @@ constructor(
 
     private fun loadDictionaryWords() {
         viewModelScope.launch(Dispatchers.IO) {
-            val words = DictionaryRepository.loadList(application)
+            val words = dictionaryRepository.loadList()
             _uiState.update { it.copy(dictionaryWords = words) }
         }
     }
@@ -219,12 +224,56 @@ constructor(
     }
 
     fun clearWakeWordTriggered() {
+        chimePlayer.stop()
         _uiState.update { it.copy(wakeWordTriggered = null) }
+    }
+
+    fun completeOnboarding() {
+        viewModelScope.launch {
+            preferencesManager.setOnboardingComplete(true)
+        }
     }
 
     override fun onCleared() {
         shutdownRecognizer()
+        chimePlayer.stop()
         super.onCleared()
+    }
+
+    private fun vibrateForWakeWord() {
+        val pattern = NotificationUtils.VIBRATION_PATTERN
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            application
+                .getSystemService(VibratorManager::class.java)
+                ?.defaultVibrator
+                ?.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            @Suppress("DEPRECATION")
+            (application.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
+                ?.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        } else {
+            @Suppress("DEPRECATION")
+            (application.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
+                ?.vibrate(pattern, -1)
+        }
+    }
+
+    private fun postWakeWordNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                application,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        val nm = application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        NotificationUtils.initChannels(application)
+        nm.notify(
+            NotificationUtils.NOTIFICATION_ID_HOT_WORD,
+            NotificationUtils.createHotWordNotification(application),
+        )
     }
 
     private fun SpeechRecognizer.teardown() {

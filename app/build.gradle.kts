@@ -2,9 +2,9 @@ import com.android.build.api.dsl.ApplicationExtension
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.plugin.compose)
-    alias(libs.plugins.google.dagger.hilt.android)
-    alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.ktlint)
 }
 
@@ -52,19 +52,15 @@ dependencies {
     implementation(files("libs/pocketsphinx-android-5prealpha-release.aar"))
 
     // Compose
-    val composeBom = platform("androidx.compose:compose-bom:2026.05.01")
+    val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
     androidTestImplementation(composeBom)
-
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material)
-    implementation(libs.materialIconsCore)
-    implementation(libs.materialIconsExtended)
-
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.core)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -79,6 +75,6 @@ dependencies {
 
     // Hilt
     implementation(libs.hilt.android)
-    "ksp"("com.google.dagger:hilt-compiler:2.59.2")
+    ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 }

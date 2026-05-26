@@ -149,8 +149,7 @@ private fun WakeWordDropdown(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
             )
 
             if (filtered.isNotEmpty()) {
