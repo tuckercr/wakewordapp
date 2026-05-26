@@ -1,65 +1,70 @@
 package com.tuckercr.zamzam
 
-import android.app.Activity
 import android.app.Service
+import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.ServiceCompat
 
-/**
- * Foreground Service for sticky notifications
- *
- * @author colintucker
- */
 class ListenerService : Service() {
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        if (ACTION_START_FOREGROUND == intent.action) {
-            Log.i(TAG, "onStartCommand: Received Start Foreground Intent")
-            val wakeWord = intent.getStringExtra(EXTRA_WAKE_WORD)!!
-            val notification = NotificationUtils.createServiceNotification(this, wakeWord)
-            startForeground(NotificationUtils.NOTIFICATION_ID_SERVICE, notification)
-        } else if (ACTION_STOP_FOREGROUND == intent.action) {
-            Log.i(TAG, "onStartCommand: Received Stop Foreground Intent")
-            stopForeground(true)
-            stopSelf()
+    override fun onStartCommand(
+        intent: Intent,
+        flags: Int,
+        startId: Int,
+    ): Int {
+        when (intent.action) {
+            ACTION_START_FOREGROUND -> {
+                val wakeWord = intent.getStringExtra(EXTRA_WAKE_WORD)!!
+                Log.i(TAG, "onStartCommand: start foreground for \"$wakeWord\"")
+                val notification = NotificationUtils.createServiceNotification(this, wakeWord)
+                try {
+                    ServiceCompat.startForeground(
+                        this,
+                        NotificationUtils.NOTIFICATION_ID_SERVICE,
+                        notification,
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                        } else {
+                            0
+                        },
+                    )
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "Cannot start microphone foreground service: ${e.message}")
+                    stopSelf()
+                }
+            }
+            ACTION_STOP_FOREGROUND -> {
+                Log.i(TAG, "onStartCommand: stop foreground")
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
         }
-
-        // This was START_STICKY but when service is recreated it causes the intent to be null
         return START_REDELIVER_INTENT
     }
 
-    override fun onCreate() {
-        super.onCreate()
-        Log.d(TAG, "onCreate() called")
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "onDestroy() called")
-    }
-
-    override fun onBind(intent: Intent): IBinder? {
-        // Used only in case of bound services.
-        return null
-    }
+    override fun onBind(intent: Intent): IBinder? = null
 
     companion object {
-        private const val TAG = "ListeningService"
+        private const val TAG = "ListenerService"
         private const val ACTION_START_FOREGROUND = "action_start_foreground"
         private const val ACTION_STOP_FOREGROUND = "action_stop_foreground"
         private const val EXTRA_WAKE_WORD = "wake_word"
-        fun createStartForegroundIntent(activity: Activity, wakeWord: String): Intent {
-            val intent = Intent(activity, ListenerService::class.java)
-            intent.action = ACTION_START_FOREGROUND
-            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            intent.putExtra(EXTRA_WAKE_WORD, wakeWord)
-            return intent
-        }
 
-        fun createStopForegroundIntent(activity: Activity): Intent {
-            val stopForegroundIntent = Intent(activity, ListenerService::class.java)
-            stopForegroundIntent.action = ACTION_STOP_FOREGROUND
-            return stopForegroundIntent
-        }
+        fun createStartForegroundIntent(
+            context: Context,
+            wakeWord: String,
+        ): Intent =
+            Intent(context, ListenerService::class.java).apply {
+                action = ACTION_START_FOREGROUND
+                putExtra(EXTRA_WAKE_WORD, wakeWord)
+            }
+
+        fun createStopForegroundIntent(context: Context): Intent =
+            Intent(context, ListenerService::class.java).apply {
+                action = ACTION_STOP_FOREGROUND
+            }
     }
 }

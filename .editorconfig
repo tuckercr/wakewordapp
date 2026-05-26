@@ -1,0 +1,11 @@
+[*.{kt,kts}]
+# Relax multiline expression rule
+ktlint_standard_multiline-expression-wrapping = disabled
+# Relax dot placement rule
+ktlint_standard_chain-wrapping = disabled
+# Relax annotation newline rule
+ktlint_standard_annotation = disabled
+# Relax class body blank line rule
+ktlint_standard_no-empty-first-line-in-class-body = disabled
+# Allow PascalCase for @Composable functions
+ktlint_function_naming_ignore_when_annotated_with = Composable

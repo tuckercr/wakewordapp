@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">ZamZam</string>
-    <string name="default_wake_word"></string>
+    <string name="app_name">ZamZow</string>
+    <string name="default_wake_word">zamzow</string>
     <string name="seek_bar_title">Sensitivity:</string>
     <string name="return_label">Go Back</string>
     <string name="listening_for_hotword">Listening for hotword</string>
@@ -12,6 +12,13 @@
     <string name="the_hotword_was_heard_click_to_return_to_test_app">Click here to return to app.</string>
     <string name="the_test_app_is_still_running">ZamZam is listening in the background</string>
     <string name="click_below_to_return">Click the button to test again.</string>
+    <string name="onboarding_description">ZamZam listens for a custom wake word and alerts you with a loud chime the moment it hears it — even when the app is running in the background.</string>
+    <string name="onboarding_permission_rationale">Microphone access is required for wake word detection. Notification permission lets us alert you when the app is backgrounded.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_sensitivity_title">Wake Word Sensitivity</string>
+    <string name="settings_sensitivity_description">This controls PocketSphinx\'s internal keyword detection threshold. A higher value makes the wake word easier to trigger but increases false positives. A lower value requires clearer speech but is less prone to mishearing. The default works well for most environments — you generally won\'t need to change this.</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="do_you_want_to_stop_the_recognizer">Do you want to stop the recognizer?</string>
