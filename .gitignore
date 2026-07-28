@@ -3,6 +3,8 @@
 *.aar
 *.ap_
 *.aab
+# Vendor AARs that aren't available via Maven must be committed explicitly
+!app/libs/*.aar
 
 # Files for the ART/Dalvik VM
 *.dex
