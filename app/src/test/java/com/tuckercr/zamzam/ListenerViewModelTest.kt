@@ -224,7 +224,10 @@ class ListenerViewModelTest {
         val vm = newViewModel()
 
         val deadline = System.currentTimeMillis() + 2_000
-        while (vm.uiState.value.dictionaryWords.isEmpty() && System.currentTimeMillis() < deadline) {
+        while (vm.uiState.value.dictionaryWords
+                .isEmpty() &&
+            System.currentTimeMillis() < deadline
+        ) {
             Thread.sleep(10)
         }
         assertEquals(words, vm.uiState.value.dictionaryWords)
@@ -243,21 +246,34 @@ class ListenerViewModelTest {
 
     // ----
 
-    private fun newViewModel() = ListenerViewModel(
-        application = application,
-        preferencesManager = preferencesManager,
-        chimePlayer = chimePlayer,
-        dictionaryRepository = dictionaryRepository,
-        sensorPrivacyManager = null,
-    )
+    private fun newViewModel() =
+        ListenerViewModel(
+            application = application,
+            preferencesManager = preferencesManager,
+            chimePlayer = chimePlayer,
+            dictionaryRepository = dictionaryRepository,
+            sensorPrivacyManager = null,
+        )
 
     private fun grantPermission() {
-        every { application.checkPermission(any(), any(), any()) } returns PackageManager.PERMISSION_GRANTED
+        every {
+            application.checkPermission(
+                any(),
+                any(),
+                any(),
+            )
+        } returns PackageManager.PERMISSION_GRANTED
         every { application.checkSelfPermission(any()) } returns PackageManager.PERMISSION_GRANTED
     }
 
     private fun denyPermission() {
-        every { application.checkPermission(any(), any(), any()) } returns PackageManager.PERMISSION_DENIED
+        every {
+            application.checkPermission(
+                any(),
+                any(),
+                any(),
+            )
+        } returns PackageManager.PERMISSION_DENIED
         every { application.checkSelfPermission(any()) } returns PackageManager.PERMISSION_DENIED
     }
 }
