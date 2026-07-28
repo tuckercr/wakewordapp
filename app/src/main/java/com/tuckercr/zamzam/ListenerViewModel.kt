@@ -122,7 +122,7 @@ class ListenerViewModel @Inject constructor(
     }
 
     fun checkPermissions() {
-        val context = application.applicationContext
+        val context = application
 
         val hasMicPermission = ContextCompat.checkSelfPermission(
             context,
