@@ -1,5 +1,8 @@
 # ZamZow
 
+![Android CI](https://github.com/tuckercr/wakewordapp/actions/workflows/android.yml/badge.svg)
+![ktlint](https://github.com/tuckercr/wakewordapp/actions/workflows/ktlint.yml/badge.svg)
+
 ZamZow is an Android proof-of-concept that uses PocketSphinx for offline wake word detection. The app runs a foreground audio service and listens for a configurable word or name, with the original accessibility idea being to help someone who is hearing impaired notice when they are being addressed. I recently revisited the project to modernize the architecture, clean up the implementation, and bring the UI closer to a modern Android development style.
 
 ---
