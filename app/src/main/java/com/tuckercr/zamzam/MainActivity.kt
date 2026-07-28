@@ -2,9 +2,11 @@ package com.tuckercr.zamzam
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,6 +27,15 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: ListenerViewModel by viewModels()
+
+    // Tracks whether we've already shown the permission dialog this Activity session.
+    // Prevents the dialog from re-launching on the onResume that fires after it is dismissed.
+    private var permissionRequestedThisSession = false
+
+    private val microphonePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            viewModel.checkPermissions()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,17 +60,39 @@ class MainActivity : ComponentActivity() {
         // startForeground(type=microphone) unless the process is in PROCESS_STATE_TOP.
         val wakeWord = viewModel.uiState.value.wakeWord
         val hasPermission =
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO,
-            ) == PackageManager.PERMISSION_GRANTED
+            buildList {
+                add(Manifest.permission.RECORD_AUDIO)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }.all {
+                ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+            }
         if (wakeWord.isNotBlank() && hasPermission) {
             startForegroundService(ListenerService.createStartForegroundIntent(this, wakeWord))
+        } else if (!hasPermission &&
+            viewModel.onboardingCompleteFlow.value == true &&
+            !permissionRequestedThisSession
+        ) {
+            // Onboarding is done but permission was revoked (e.g. "Ask Every Time" in settings).
+            // Re-request once per session so the app recovers without forcing the user to
+            // manually navigate back through onboarding.
+            permissionRequestedThisSession = true
+            microphonePermissionLauncher.launch(
+                buildList {
+                    add(Manifest.permission.RECORD_AUDIO)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        add(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }.toTypedArray(),
+            )
         }
     }
 
     override fun onDestroy() {
-        startService(ListenerService.createStopForegroundIntent(this))
+        if (isFinishing) { // Only stop if NOT a configuration change
+            startService(ListenerService.createStopForegroundIntent(this))
+        }
         super.onDestroy()
     }
 

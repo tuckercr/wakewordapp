@@ -40,6 +40,7 @@ class ListenerViewModelTest {
     @Before
     fun setUp() {
         application = mockk(relaxed = true)
+        every { application.applicationContext } returns application
         preferencesManager = mockk(relaxed = true)
         chimePlayer = mockk(relaxed = true)
         dictionaryRepository = mockk(relaxed = true)

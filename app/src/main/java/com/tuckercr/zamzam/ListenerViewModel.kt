@@ -88,10 +88,9 @@ class ListenerViewModel @Inject constructor(
                     chimePlayer.play()
                     vibrateForWakeWord()
                     postWakeWordNotification()
-                    viewModelScope.launch(Dispatchers.IO) {
-                        recognizer?.teardown()
-                        recognizer = null
-                    }
+                    // Stop and start again to clear the hypothesis buffer for the next detection
+                    recognizer?.stop()
+                    recognizer?.startListening(HOT_WORD_SEARCH)
                 }
             }
 
@@ -123,16 +122,29 @@ class ListenerViewModel @Inject constructor(
     }
 
     fun checkPermissions() {
-        val hasPermission =
-            ContextCompat.checkSelfPermission(
-                application,
-                Manifest.permission.RECORD_AUDIO,
-            ) == PackageManager.PERMISSION_GRANTED
+        val context = application
 
-        // Checking isSensorPrivacyEnabled requires the restricted OBSERVE_SENSOR_PRIVACY permission
-        val isPrivacyEnabled = false
+        val hasMicPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasNotificationPermission =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+
+        // Checking isSensorPrivacyEnabled requires the restricted OBSERVE_SENSOR_PRIVACY permission.
+        // We can use AudioManager as a fallback to check if the microphone is software-muted.
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+        val isMuted = audioManager?.isMicrophoneMute ?: false
+
         var supportsToggle = false
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             sensorPrivacyManager?.let {
                 supportsToggle = it.supportsSensorToggle(SensorPrivacyManager.Sensors.MICROPHONE)
@@ -141,8 +153,8 @@ class ListenerViewModel @Inject constructor(
 
         _uiState.update {
             it.copy(
-                isMicrophonePermissionGranted = hasPermission,
-                isMicrophonePrivacyEnabled = isPrivacyEnabled,
+                isMicrophonePermissionGranted = hasMicPermission && hasNotificationPermission,
+                isMicrophonePrivacyEnabled = isMuted,
                 supportsMicrophoneToggle = supportsToggle,
             )
         }
