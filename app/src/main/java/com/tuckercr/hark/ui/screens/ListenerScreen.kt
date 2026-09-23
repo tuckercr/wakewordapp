@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam.ui.screens
+package com.tuckercr.hark.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -32,10 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.tuckercr.zamzam.ListenerUiState
-import com.tuckercr.zamzam.MicState
-import com.tuckercr.zamzam.R
-import com.tuckercr.zamzam.ui.theme.ZamZamTheme
+import com.tuckercr.hark.ListenerUiState
+import com.tuckercr.hark.MicState
+import com.tuckercr.hark.R
+import com.tuckercr.hark.ui.theme.HarkTheme
 
 @Composable
 fun ListenerScreen(
@@ -176,7 +176,7 @@ private fun WakeWordDropdown(
 @Preview(showBackground = true)
 @Composable
 private fun ListenerScreenPreview() {
-    ZamZamTheme {
+    HarkTheme {
         ListenerScreen(
             uiState =
                 ListenerUiState(

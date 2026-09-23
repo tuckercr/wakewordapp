@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam.ui.screens
+package com.tuckercr.hark.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -28,8 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.tuckercr.zamzam.R
-import com.tuckercr.zamzam.ui.theme.ZamZamTheme
+import com.tuckercr.hark.R
+import com.tuckercr.hark.ui.theme.HarkTheme
 
 @Composable
 fun OnboardingScreen(
@@ -131,7 +131,7 @@ fun OnboardingScreen(
 @Preview(showBackground = true)
 @Composable
 private fun OnboardingScreenPreview() {
-    ZamZamTheme {
+    HarkTheme {
         OnboardingScreen(onComplete = {})
     }
 }

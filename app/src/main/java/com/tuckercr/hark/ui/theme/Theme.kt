@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam.ui.theme
+package com.tuckercr.hark.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
@@ -22,7 +22,7 @@ private val ColorScheme =
     )
 
 @Composable
-fun ZamZamTheme(content: @Composable () -> Unit) {
+fun HarkTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = ColorScheme,
         content = content,

@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam
+package com.tuckercr.hark
 
 import android.app.Service
 import android.content.Context
