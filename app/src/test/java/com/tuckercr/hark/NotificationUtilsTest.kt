@@ -2,6 +2,7 @@ package com.tuckercr.hark
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NotificationUtilsTest {
@@ -32,5 +33,15 @@ class NotificationUtilsTest {
             NotificationUtils.NOTIFICATION_ID_SERVICE,
             NotificationUtils.NOTIFICATION_ID_HOT_WORD,
         )
+    }
+
+    @Test
+    fun `NOTIFICATION_ID_SERVICE is a positive integer`() {
+        assertTrue(NotificationUtils.NOTIFICATION_ID_SERVICE > 0)
+    }
+
+    @Test
+    fun `NOTIFICATION_ID_HOT_WORD is a positive integer`() {
+        assertTrue(NotificationUtils.NOTIFICATION_ID_HOT_WORD > 0)
     }
 }
