@@ -1,16 +1,16 @@
-# ZamZow
+# Hark
 
 ![Android CI](https://github.com/tuckercr/wakewordapp/actions/workflows/android.yml/badge.svg)
 ![ktlint](https://github.com/tuckercr/wakewordapp/actions/workflows/ktlint.yml/badge.svg)
 
-ZamZow is an Android proof-of-concept that uses PocketSphinx for offline wake word detection. The app runs a foreground audio service and listens for a configurable word or name, with the original accessibility idea being to help someone who is hearing impaired notice when they are being addressed. I recently revisited the project to modernize the architecture, clean up the implementation, and bring the UI closer to a modern Android development style.
+Hark is an Android proof-of-concept that uses PocketSphinx for offline wake word detection. The app runs a foreground audio service and listens for a configurable word or name, with the original accessibility idea being to help someone who is hearing impaired notice when they are being addressed. I recently revisited the project to modernize the architecture, clean up the implementation, and bring the UI closer to a modern Android development style.
 
 ---
 
 ## Features
 
 ### Wake Word Selection
-Choose any word from the PocketSphinx built-in dictionary using the searchable dropdown on the main screen. Start typing to filter the list. The app defaults to the word "zamzow" but anything in the dictionary works.
+Choose any word from the PocketSphinx built-in dictionary using the searchable dropdown on the main screen. Start typing to filter the list. The app defaults to the word "hark" but anything in the dictionary works.
 
 The microphone icon reflects the current listening state:
 
@@ -26,14 +26,14 @@ The microphone icon reflects the current listening state:
 ---
 
 ### Background Listening
-Once a wake word is selected and microphone permission is granted, ZamZow keeps listening even after you lock your phone or switch to another app. A persistent foreground-service notification confirms it is running and shows which word it is listening for.
+Once a wake word is selected and microphone permission is granted, Hark keeps listening even after you lock your phone or switch to another app. A persistent foreground-service notification confirms it is running and shows which word it is listening for.
 
 ![Foreground service notification](screenshots/fg_service.png)
 
 ---
 
 ### Wake Word Detected Alert
-When the wake word is heard, ZamZow:
+When the wake word is heard, Hark:
 - Plays a loud alarm-style chime
 - Vibrates the device
 - Posts a heads-up notification (even when the screen is off)

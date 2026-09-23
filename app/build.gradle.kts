@@ -9,11 +9,11 @@ plugins {
 }
 
 configure<ApplicationExtension> {
-    namespace = "com.tuckercr.zamzam"
+    namespace = "com.tuckercr.hark"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.tuckercr.zamzam"
+        applicationId = "com.tuckercr.hark"
         minSdk = 26
         targetSdk = 36
         versionCode = 4

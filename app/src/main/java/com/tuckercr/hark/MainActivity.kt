@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam
+package com.tuckercr.hark
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -16,11 +16,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.tuckercr.zamzam.ui.screens.ListenerScreen
-import com.tuckercr.zamzam.ui.screens.OnboardingScreen
-import com.tuckercr.zamzam.ui.screens.SettingsScreen
-import com.tuckercr.zamzam.ui.screens.WakeWordDetectedScreen
-import com.tuckercr.zamzam.ui.theme.ZamZamTheme
+import com.tuckercr.hark.ui.screens.ListenerScreen
+import com.tuckercr.hark.ui.screens.OnboardingScreen
+import com.tuckercr.hark.ui.screens.SettingsScreen
+import com.tuckercr.hark.ui.screens.WakeWordDetectedScreen
+import com.tuckercr.hark.ui.theme.HarkTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -43,8 +43,8 @@ class MainActivity : ComponentActivity() {
         val openHotWordDetected = intent?.getBooleanExtra(EXTRA_OPEN_HOT_WORD_DETECTED, false) == true
 
         setContent {
-            ZamZamTheme {
-                ZamZamApp(
+            HarkTheme {
+                HarkApp(
                     viewModel = viewModel,
                     startOnDetectedScreen = openHotWordDetected,
                 )
@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun ZamZamApp(
+private fun HarkApp(
     viewModel: ListenerViewModel,
     startOnDetectedScreen: Boolean,
 ) {
