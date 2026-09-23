@@ -3,15 +3,19 @@ package com.tuckercr.hark
 import android.app.Application
 import android.content.pm.PackageManager
 import com.tuckercr.hark.prefs.PreferencesManager
+import edu.cmu.pocketsphinx.Hypothesis
+import io.mockk.clearMocks
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
 import io.mockk.verify
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -241,6 +245,124 @@ class ListenerViewModelTest {
     @Test
     fun `DEFAULT_SENSITIVITY is a positive integer`() {
         assertTrue(ListenerViewModel.DEFAULT_SENSITIVITY > 0)
+    }
+
+    // endregion
+
+    // region — recognitionListener callbacks
+
+    @Test
+    fun `onBeginningOfSpeech sets micState to SPEAKING`() {
+        viewModel.recognitionListener.onBeginningOfSpeech()
+        assertEquals(MicState.SPEAKING, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `onEndOfSpeech sets micState to LISTENING`() {
+        viewModel.recognitionListener.onEndOfSpeech()
+        assertEquals(MicState.LISTENING, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `onResult sets micState to LISTENING`() {
+        viewModel.recognitionListener.onResult(null)
+        assertEquals(MicState.LISTENING, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `onPartialResult with null hypothesis does nothing`() {
+        viewModel.recognitionListener.onPartialResult(null)
+        assertNull(viewModel.uiState.value.wakeWordTriggered)
+    }
+
+    @Test
+    fun `onPartialResult with matching word triggers detection`() {
+        val hypothesis = mockk<Hypothesis>()
+        every { hypothesis.hypstr } returns "testword"
+        viewModel.recognitionListener.onPartialResult(hypothesis)
+        assertEquals("testword", viewModel.uiState.value.wakeWordTriggered)
+        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
+        verify { chimePlayer.play() }
+    }
+
+    @Test
+    fun `onPartialResult with text containing wake word triggers detection`() {
+        val hypothesis = mockk<Hypothesis>()
+        every { hypothesis.hypstr } returns "please testword now"
+        viewModel.recognitionListener.onPartialResult(hypothesis)
+        assertNotNull(viewModel.uiState.value.wakeWordTriggered)
+    }
+
+    @Test
+    fun `onPartialResult with non-matching text does not trigger detection`() {
+        val hypothesis = mockk<Hypothesis>()
+        every { hypothesis.hypstr } returns "completely different"
+        viewModel.recognitionListener.onPartialResult(hypothesis)
+        assertNull(viewModel.uiState.value.wakeWordTriggered)
+        verify(exactly = 0) { chimePlayer.play() }
+    }
+
+    @Test
+    fun `onPartialResult when already triggered does not re-trigger`() {
+        val hypothesis = mockk<Hypothesis>()
+        every { hypothesis.hypstr } returns "testword"
+        viewModel.recognitionListener.onPartialResult(hypothesis)
+        clearMocks(chimePlayer)
+        every { chimePlayer.stop() } returns Unit // re-stub after clearMocks
+        viewModel.recognitionListener.onPartialResult(hypothesis)
+        verify(exactly = 0) { chimePlayer.play() }
+    }
+
+    @Test
+    fun `onPartialResult with null hypstr does nothing`() {
+        val hypothesis = mockk<Hypothesis>()
+        every { hypothesis.hypstr } returns null
+        viewModel.recognitionListener.onPartialResult(hypothesis)
+        assertNull(viewModel.uiState.value.wakeWordTriggered)
+    }
+
+    // endregion
+
+    // region — onCleared
+
+    @Test
+    fun `onCleared shuts down recognizer and stops chime`() {
+        viewModel.javaClass.getDeclaredMethod("onCleared").apply {
+            isAccessible = true
+            invoke(viewModel)
+        }
+        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
+        verify(atLeast = 1) { chimePlayer.stop() }
+    }
+
+    // endregion
+
+    // region — wake word flow update
+
+    @Test
+    fun `wakeWord flow emitting new value updates wakeWord state`() {
+        val wakeWordFlow = MutableStateFlow<String?>("first")
+        every { preferencesManager.wakeWordFlow } returns wakeWordFlow
+        val vm = newViewModel()
+        assertEquals("first", vm.uiState.value.wakeWord)
+        wakeWordFlow.value = "second"
+        assertEquals("second", vm.uiState.value.wakeWord)
+    }
+
+    // endregion
+
+    // region — permission fields
+
+    @Test
+    fun `checkPermissions sets supportsMicrophoneToggle false when sensorPrivacyManager is null`() {
+        viewModel.checkPermissions()
+        assertFalse(viewModel.uiState.value.supportsMicrophoneToggle)
+    }
+
+    @Test
+    fun `checkPermissions sets isMicrophonePrivacyEnabled false when microphone is not muted`() {
+        viewModel.checkPermissions()
+        assertFalse(viewModel.uiState.value.isMicrophonePrivacyEnabled)
     }
 
     // endregion

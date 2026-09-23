@@ -68,7 +68,7 @@ class ListenerViewModel @Inject constructor(
     private var recognizer: SpeechRecognizer? = null
     private var setupJob: Job? = null
 
-    private val recognitionListener =
+    internal val recognitionListener =
         object : RecognitionListener {
             override fun onBeginningOfSpeech() {
                 _uiState.update { it.copy(micState = MicState.SPEAKING) }
@@ -280,7 +280,7 @@ class ListenerViewModel @Inject constructor(
         ) {
             return
         }
-        val nm = application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val nm = application.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         NotificationUtils.initChannels(application)
         nm.notify(
             NotificationUtils.NOTIFICATION_ID_HOT_WORD,
