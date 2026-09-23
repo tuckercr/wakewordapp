@@ -1,8 +1,8 @@
-package com.tuckercr.zamzam.di
+package com.tuckercr.hark.di
 
 import android.content.Context
 import android.hardware.SensorPrivacyManager
-import com.tuckercr.zamzam.prefs.PreferencesManager
+import com.tuckercr.hark.prefs.PreferencesManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

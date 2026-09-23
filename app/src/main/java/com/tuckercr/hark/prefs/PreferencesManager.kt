@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam.prefs
+package com.tuckercr.hark.prefs
 
 import android.content.Context
 import androidx.datastore.core.DataStore

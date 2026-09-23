@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam.ui.screens
+package com.tuckercr.hark.ui.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,8 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.tuckercr.zamzam.R
-import com.tuckercr.zamzam.ui.theme.ZamZamTheme
+import com.tuckercr.hark.R
+import com.tuckercr.hark.ui.theme.HarkTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +95,7 @@ fun SettingsScreen(
 @Preview(showBackground = true)
 @Composable
 private fun SettingsScreenPreview() {
-    ZamZamTheme {
+    HarkTheme {
         SettingsScreen(
             sensitivity = 20,
             onSensitivityChanged = {},

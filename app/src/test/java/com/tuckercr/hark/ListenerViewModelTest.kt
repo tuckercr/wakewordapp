@@ -1,8 +1,8 @@
-package com.tuckercr.zamzam
+package com.tuckercr.hark
 
 import android.app.Application
 import android.content.pm.PackageManager
-import com.tuckercr.zamzam.prefs.PreferencesManager
+import com.tuckercr.hark.prefs.PreferencesManager
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk

@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam
+package com.tuckercr.hark
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -15,7 +15,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tuckercr.zamzam.prefs.PreferencesManager
+import com.tuckercr.hark.prefs.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import edu.cmu.pocketsphinx.Assets
 import edu.cmu.pocketsphinx.Hypothesis

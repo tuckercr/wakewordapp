@@ -1,4 +1,4 @@
-package com.tuckercr.zamzam
+package com.tuckercr.hark
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
