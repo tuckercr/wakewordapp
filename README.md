@@ -3,73 +3,91 @@
 ![Android CI](https://github.com/tuckercr/wakewordapp/actions/workflows/android.yml/badge.svg)
 ![ktlint](https://github.com/tuckercr/wakewordapp/actions/workflows/ktlint.yml/badge.svg)
 
-Hark is an Android proof-of-concept that uses PocketSphinx for offline wake word detection. The app runs a foreground audio service and listens for a configurable word or name, with the original accessibility idea being to help someone who is hearing impaired notice when they are being addressed. I recently revisited the project to modernize the architecture, clean up the implementation, and bring the UI closer to a modern Android development style.
+Offline wake-word detection on Android — no network call ever leaves the device. Say a configured word and Hark fires a heads-up notification immediately, even with the screen off. [PocketSphinx](https://cmusphinx.github.io/) runs the CMU acoustic model entirely in-process, so detection works in airplane mode or anywhere else connectivity is unavailable.
+
+The original use case was accessibility: alerting a hearing-impaired user the moment someone nearby says their name. I revisited the project to modernise the architecture, sharpen the implementation, and bring the code up to a standard I'd be comfortable shipping.
 
 ---
 
-## Features
+## How the on-device recognition works
 
-### Wake Word Selection
-Choose any word from the PocketSphinx built-in dictionary using the searchable dropdown on the main screen. Start typing to filter the list. The app defaults to the word "hark" but anything in the dictionary works.
+PocketSphinx bundles a pre-trained acoustic model (CMU US English, PTM variant) and a pronunciation dictionary of ~130k words. At runtime, Hark:
 
-The microphone icon reflects the current listening state:
+1. Syncs the bundled model assets to the app's files directory on first launch.
+2. Configures a `SpeechRecognizer` with a keyphrase search and a sensitivity threshold (`1e-2×sensitivity`).
+3. Starts continuous listening on the recogniser. Partial results stream in on every audio frame; when a partial result contains the target word, detection fires immediately without waiting for an utterance boundary.
+4. On detection, the recogniser stops, clears its hypothesis buffer, and restarts — ready for the next trigger.
 
-| Icon | Meaning |
-|---|---|
-| 🔇 Light grey | Idle / waiting to start |
-| 🎙️ Grey | Actively listening |
-| 🎙️ Green | Speech detected |
-| 🔴 Red mic-off | Microphone permission not granted |
-
-![Main screen](screenshots/main.png)
+No audio ever leaves the device. The microphone feed is consumed entirely by PocketSphinx running in-process.
 
 ---
 
-### Background Listening
-Once a wake word is selected and microphone permission is granted, Hark keeps listening even after you lock your phone or switch to another app. A persistent foreground-service notification confirms it is running and shows which word it is listening for.
+## Architecture
 
-![Foreground service notification](screenshots/fg_service.png)
-
----
-
-### Wake Word Detected Alert
-When the wake word is heard, Hark:
-- Plays a loud alarm-style chime
-- Vibrates the device
-- Posts a heads-up notification (even when the screen is off)
-- Brings the detected screen to the foreground if the app is open
-
-Tap **Go Back** to dismiss and resume listening.
-
-![Wake word triggered](screenshots/triggered.png)
-
----
-
-### Sensitivity
-Open **Settings** (gear icon, top-right of the main screen) to adjust the detection threshold.
-
-A **higher** value triggers more easily — useful in quiet environments or if the word is being missed. A **lower** value requires clearer pronunciation — useful to reduce false positives in noisy surroundings. The default works well in most conditions.
-
----
-
-## Permissions
-
-| Permission | Why it's needed |
-|---|---|
-| `RECORD_AUDIO` | Wake word detection via the microphone |
-| `POST_NOTIFICATIONS` | Heads-up alert when the wake word is heard |
-| `FOREGROUND_SERVICE_MICROPHONE` | Keep the listener running in the background |
-
-All permissions are explained at first launch before the system dialog appears. The microphone is used entirely on-device — audio is never transmitted anywhere.
+- **MVVM** — `ListenerViewModel` owns all recogniser state and exposes it as a single `StateFlow<ListenerUiState>`. The Activity and Compose screens observe this flow; they never touch the recogniser directly.
+- **Foreground service** — Android 14+ requires microphone foreground services to be started while the app is in the foreground. `ListenerService` is started from `onResume` to satisfy this constraint, then keeps running in the background.
+- **Hilt** — `SpeechRecognizer`, `ChimePlayer`, and `DictionaryRepository` are injected; `PreferencesManager` wraps a `DataStore<Preferences>` injected through `AppModule`.
+- **DataStore** — wake word choice and onboarding state survive process death.
+- **Permission recovery** — if the user sets microphone permission to "Ask Every Time" and force-closes the app, `onResume` re-requests the permission once per Activity session using `ActivityResultContracts.RequestMultiplePermissions`, with a flag to prevent a loop when the dialog dismissal triggers another `onResume`.
 
 ---
 
 ## Tech Stack
 
-- **Language:** Kotlin
-- **UI:** Jetpack Compose + Material 3
-- **Architecture:** MVVM with `ViewModel` + `StateFlow`
-- **DI:** Hilt
-- **Persistence:** DataStore (wake word preference, onboarding state)
-- **Background:** Foreground `Service` with microphone foreground-service type
-- **Voice recognition:** [PocketSphinx](https://cmusphinx.github.io/) — fully on-device, no internet required
+| | |
+|---|---|
+| **Language** | Kotlin |
+| **UI** | Jetpack Compose + Material 3 |
+| **Architecture** | MVVM, `ViewModel` + `StateFlow` |
+| **DI** | Hilt |
+| **Persistence** | DataStore |
+| **Background** | Foreground `Service`, microphone type |
+| **Voice recognition** | PocketSphinx (on-device, no internet) |
+| **CI** | GitHub Actions — lint, unit tests, debug APK |
+
+---
+
+## Testing
+
+64 unit tests across five classes, all running on the JVM without Robolectric:
+
+- **`ListenerViewModelTest`** (35) — initial state, permission transitions, all `RecognitionListener` callbacks (begin/end/partial/result), re-trigger guard, sensitivity changes, wake-word flow updates, `onCleared`
+- **`PreferencesManagerTest`** (10) — real `DataStore` backed by a temp file; covers read, write, overwrite, and clear for both preferences
+- **`ListenerUiStateTest`** (11) — data class semantics and copy behaviour
+- **`NotificationUtilsTest`** (6) — vibration pattern, notification IDs
+- **`MicStateTest`** (2) — enum completeness
+
+Key testing choices:
+
+- `ContextCompat.checkSelfPermission` routes through `context.checkPermission(permission, pid, uid)` on the JVM (SDK\_INT = 0 path). Stubbing `checkPermission` on the mock `Application` gives full permission control without `mockkStatic`.
+- `returnDefaultValues = true` makes Android stub methods return 0/null instead of throwing, so coroutines in the `ViewModel` init block run to completion.
+- `recognitionListener` is `internal` so tests call its callbacks directly and assert on the resulting `uiState`.
+
+---
+
+## Permissions
+
+| Permission | Why |
+|---|---|
+| `RECORD_AUDIO` | Microphone input for wake-word detection |
+| `POST_NOTIFICATIONS` | Heads-up alert when the word is heard |
+| `FOREGROUND_SERVICE_MICROPHONE` | Keep the listener alive in the background |
+
+---
+
+## Screenshots
+
+<table>
+<tr>
+<td><img src="screenshots/main.png" width="180" alt="Main screen"/></td>
+<td><img src="screenshots/triggered.png" width="180" alt="Wake word detected"/></td>
+<td><img src="screenshots/fg_service.png" width="180" alt="Background service notification"/></td>
+</tr>
+<tr>
+<td align="center">Main screen</td>
+<td align="center">Wake word detected</td>
+<td align="center">Background notification</td>
+</tr>
+</table>
+
+> Screenshots are from an earlier build and show old branding — the UI and branding are up to date in the current source.
