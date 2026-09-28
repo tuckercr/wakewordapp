@@ -30,68 +30,76 @@ class PreferencesManagerTest {
     // region — wakeWordFlow
 
     @Test
-    fun `wakeWordFlow emits null when no preference is set`() = runBlocking<Unit> {
-        assertNull(createManager().wakeWordFlow.first())
-    }
+    fun `wakeWordFlow emits null when no preference is set`() =
+        runBlocking<Unit> {
+            assertNull(createManager().wakeWordFlow.first())
+        }
 
     @Test
-    fun `updateWakeWord persists the value`() = runBlocking<Unit> {
-        val pm = createManager()
-        pm.updateWakeWord("hark")
-        assertEquals("hark", pm.wakeWordFlow.first())
-    }
+    fun `updateWakeWord persists the value`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.updateWakeWord("hark")
+            assertEquals("hark", pm.wakeWordFlow.first())
+        }
 
     @Test
-    fun `updateWakeWord overwrites the previous value`() = runBlocking<Unit> {
-        val pm = createManager()
-        pm.updateWakeWord("hello")
-        pm.updateWakeWord("world")
-        assertEquals("world", pm.wakeWordFlow.first())
-    }
+    fun `updateWakeWord overwrites the previous value`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.updateWakeWord("hello")
+            pm.updateWakeWord("world")
+            assertEquals("world", pm.wakeWordFlow.first())
+        }
 
     // endregion
 
     // region — onboardingCompleteFlow
 
     @Test
-    fun `onboardingCompleteFlow emits false when no preference is set`() = runBlocking<Unit> {
-        assertFalse(createManager().onboardingCompleteFlow.first())
-    }
+    fun `onboardingCompleteFlow emits false when no preference is set`() =
+        runBlocking<Unit> {
+            assertFalse(createManager().onboardingCompleteFlow.first())
+        }
 
     @Test
-    fun `setOnboardingComplete true persists and emits true`() = runBlocking<Unit> {
-        val pm = createManager()
-        pm.setOnboardingComplete(true)
-        assertTrue(pm.onboardingCompleteFlow.first())
-    }
+    fun `setOnboardingComplete true persists and emits true`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setOnboardingComplete(true)
+            assertTrue(pm.onboardingCompleteFlow.first())
+        }
 
     @Test
-    fun `setOnboardingComplete false after true emits false`() = runBlocking<Unit> {
-        val pm = createManager()
-        pm.setOnboardingComplete(true)
-        pm.setOnboardingComplete(false)
-        assertFalse(pm.onboardingCompleteFlow.first())
-    }
+    fun `setOnboardingComplete false after true emits false`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setOnboardingComplete(true)
+            pm.setOnboardingComplete(false)
+            assertFalse(pm.onboardingCompleteFlow.first())
+        }
 
     // endregion
 
     // region — clear
 
     @Test
-    fun `clear removes the wake word`() = runBlocking<Unit> {
-        val pm = createManager()
-        pm.updateWakeWord("hark")
-        pm.clear()
-        assertNull(pm.wakeWordFlow.first())
-    }
+    fun `clear removes the wake word`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.updateWakeWord("hark")
+            pm.clear()
+            assertNull(pm.wakeWordFlow.first())
+        }
 
     @Test
-    fun `clear resets onboarding to false`() = runBlocking<Unit> {
-        val pm = createManager()
-        pm.setOnboardingComplete(true)
-        pm.clear()
-        assertFalse(pm.onboardingCompleteFlow.first())
-    }
+    fun `clear resets onboarding to false`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setOnboardingComplete(true)
+            pm.clear()
+            assertFalse(pm.onboardingCompleteFlow.first())
+        }
 
     // endregion
 
