@@ -89,5 +89,3 @@ Key testing choices:
 <td align="center">Background notification</td>
 </tr>
 </table>
-
-> Screenshots are from an earlier build and show old branding — the UI and branding are up to date in the current source.
