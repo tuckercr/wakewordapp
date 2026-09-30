@@ -116,4 +116,43 @@ class PreferencesManagerTest {
     }
 
     // endregion
+
+    // region — detectionActionFlow
+
+    @Test
+    fun `detectionActionFlow emits Default when no preference is set`() =
+        runBlocking<Unit> {
+            assertTrue(createManager().detectionActionFlow.first() is DetectionAction.Default)
+        }
+
+    @Test
+    fun `setDetectionAction LaunchApp persists package and name`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setDetectionAction(DetectionAction.LaunchApp("com.example.app", "Example"))
+            val action = pm.detectionActionFlow.first()
+            assertTrue(action is DetectionAction.LaunchApp)
+            assertEquals("com.example.app", (action as DetectionAction.LaunchApp).packageName)
+            assertEquals("Example", action.appName)
+        }
+
+    @Test
+    fun `setDetectionAction Default after LaunchApp resets to Default`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setDetectionAction(DetectionAction.LaunchApp("com.example.app", "Example"))
+            pm.setDetectionAction(DetectionAction.Default)
+            assertTrue(pm.detectionActionFlow.first() is DetectionAction.Default)
+        }
+
+    @Test
+    fun `clear resets detectionAction to Default`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setDetectionAction(DetectionAction.LaunchApp("com.example.app", "Example"))
+            pm.clear()
+            assertTrue(pm.detectionActionFlow.first() is DetectionAction.Default)
+        }
+
+    // endregion
 }

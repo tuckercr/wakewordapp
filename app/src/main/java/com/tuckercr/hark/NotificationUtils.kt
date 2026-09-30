@@ -73,16 +73,27 @@ internal object NotificationUtils {
             .build()
     }
 
-    fun createHotWordNotification(context: Context): Notification {
-        val intent =
-            Intent(context, MainActivity::class.java).apply {
-                putExtra(MainActivity.EXTRA_OPEN_HOT_WORD_DETECTED, true)
+    fun createHotWordNotification(
+        context: Context,
+        action: DetectionAction = DetectionAction.Default,
+    ): Notification {
+        val launchIntent =
+            when (action) {
+                is DetectionAction.LaunchApp ->
+                    context.packageManager.getLaunchIntentForPackage(action.packageName)
+                        ?: Intent(context, MainActivity::class.java).apply {
+                            putExtra(MainActivity.EXTRA_OPEN_HOT_WORD_DETECTED, true)
+                        }
+                is DetectionAction.Default ->
+                    Intent(context, MainActivity::class.java).apply {
+                        putExtra(MainActivity.EXTRA_OPEN_HOT_WORD_DETECTED, true)
+                    }
             }
         val pendingIntent =
             PendingIntent.getActivity(
                 context,
                 0,
-                intent,
+                launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         return NotificationCompat

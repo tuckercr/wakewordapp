@@ -150,6 +150,8 @@ private fun HarkApp(
             SettingsScreen(
                 sensitivity = uiState.sensitivity,
                 onSensitivityChanged = viewModel::setSensitivity,
+                detectionAction = uiState.detectionAction,
+                onDetectionActionChanged = viewModel::setDetectionAction,
                 onBack = { navController.popBackStack() },
             )
         }
