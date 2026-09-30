@@ -24,11 +24,16 @@ class BootReceiver : BroadcastReceiver() {
         fun preferencesManager(): PreferencesManager
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(
+        context: Context,
+        intent: Intent,
+    ) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
-        ) return
+        ) {
+            return
+        }
 
         val preferencesManager = EntryPointAccessors
             .fromApplication(context.applicationContext, BootReceiverEntryPoint::class.java)
@@ -44,7 +49,10 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
-    internal suspend fun startIfWakeWordConfigured(context: Context, preferencesManager: PreferencesManager) {
+    internal suspend fun startIfWakeWordConfigured(
+        context: Context,
+        preferencesManager: PreferencesManager,
+    ) {
         val wakeWord = preferencesManager.wakeWordFlow.first()
         if (!wakeWord.isNullOrBlank()) {
             ContextCompat.startForegroundService(

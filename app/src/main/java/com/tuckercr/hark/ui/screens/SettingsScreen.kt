@@ -164,6 +164,7 @@ private fun AppPickerDialog(
         remember {
             val pm = context.packageManager
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+
             @Suppress("DEPRECATION")
             val resolved =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -5,5 +5,8 @@ sealed class DetectionAction {
     data object Default : DetectionAction()
 
     /** Tap notification → launch a specific installed app. */
-    data class LaunchApp(val packageName: String, val appName: String) : DetectionAction()
+    data class LaunchApp(
+        val packageName: String,
+        val appName: String,
+    ) : DetectionAction()
 }
