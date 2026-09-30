@@ -26,24 +26,26 @@ class BootReceiverTest {
     }
 
     @Test
-    fun `startIfWakeWordConfigured starts service when wake word is configured`() = runBlocking {
-        every { preferencesManager.wakeWordFlow } returns flowOf("hark")
-        receiver.startIfWakeWordConfigured(context, preferencesManager)
-        verify { context.startService(any()) }
-    }
+    fun `startIfWakeWordConfigured starts service when wake word is configured`() =
+        runBlocking {
+            every { preferencesManager.wakeWordFlow } returns flowOf("hark")
+            receiver.startIfWakeWordConfigured(context, preferencesManager)
+            verify { context.startService(any()) }
+        }
 
     @Test
-    fun `startIfWakeWordConfigured does nothing when wake word is null`() = runBlocking {
-        every { preferencesManager.wakeWordFlow } returns flowOf(null)
-        receiver.startIfWakeWordConfigured(context, preferencesManager)
-        verify(exactly = 0) { context.startService(any()) }
-    }
+    fun `startIfWakeWordConfigured does nothing when wake word is null`() =
+        runBlocking {
+            every { preferencesManager.wakeWordFlow } returns flowOf(null)
+            receiver.startIfWakeWordConfigured(context, preferencesManager)
+            verify(exactly = 0) { context.startService(any()) }
+        }
 
     @Test
-    fun `startIfWakeWordConfigured does nothing when wake word is blank`() = runBlocking {
-        every { preferencesManager.wakeWordFlow } returns flowOf("   ")
-        receiver.startIfWakeWordConfigured(context, preferencesManager)
-        verify(exactly = 0) { context.startService(any()) }
-    }
-
+    fun `startIfWakeWordConfigured does nothing when wake word is blank`() =
+        runBlocking {
+            every { preferencesManager.wakeWordFlow } returns flowOf("   ")
+            receiver.startIfWakeWordConfigured(context, preferencesManager)
+            verify(exactly = 0) { context.startService(any()) }
+        }
 }
