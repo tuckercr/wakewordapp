@@ -48,6 +48,7 @@ data class ListenerUiState(
     val isMicrophonePermissionGranted: Boolean = false,
     val isMicrophonePrivacyEnabled: Boolean = false,
     val supportsMicrophoneToggle: Boolean = false,
+    val detectionAction: DetectionAction = DetectionAction.Default,
 )
 
 @HiltViewModel
@@ -116,6 +117,11 @@ class ListenerViewModel @Inject constructor(
                     shutdownRecognizer()
                     setup()
                 }
+            }
+        }
+        viewModelScope.launch {
+            preferencesManager.detectionActionFlow.collectLatest { action ->
+                _uiState.update { it.copy(detectionAction = action) }
             }
         }
         loadDictionaryWords()
@@ -240,6 +246,12 @@ class ListenerViewModel @Inject constructor(
         _uiState.update { it.copy(wakeWordTriggered = null) }
     }
 
+    fun setDetectionAction(action: DetectionAction) {
+        viewModelScope.launch {
+            preferencesManager.setDetectionAction(action)
+        }
+    }
+
     fun completeOnboarding() {
         viewModelScope.launch {
             preferencesManager.setOnboardingComplete(true)
@@ -284,7 +296,7 @@ class ListenerViewModel @Inject constructor(
         NotificationUtils.initChannels(application)
         nm.notify(
             NotificationUtils.NOTIFICATION_ID_HOT_WORD,
-            NotificationUtils.createHotWordNotification(application),
+            NotificationUtils.createHotWordNotification(application, _uiState.value.detectionAction),
         )
     }
 

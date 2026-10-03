@@ -17,6 +17,11 @@
     <string name="onboarding_get_started">Get Started</string>
     <string name="onboarding_continue">Continue</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_action_title">On detection</string>
+    <string name="settings_action_notification">Show notification</string>
+    <string name="settings_action_open_app">Open %1$s</string>
+    <string name="settings_action_choose">Choose app</string>
+    <string name="settings_action_picker_title">On detection, open…</string>
     <string name="settings_sensitivity_title">Wake Word Sensitivity</string>
     <string name="settings_sensitivity_description">This controls PocketSphinx\'s internal keyword detection threshold. A higher value makes the wake word easier to trigger but increases false positives. A lower value requires clearer speech but is less prone to mishearing. The default works well for most environments — you generally won\'t need to change this.</string>
     <string name="yes">Yes</string>
