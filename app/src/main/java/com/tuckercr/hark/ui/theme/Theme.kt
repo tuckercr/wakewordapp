@@ -1,47 +1,44 @@
 package com.tuckercr.hark.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.tuckercr.hark.R
 
-private val Green = Color(0xFF1BBC68)
-private val GreenBright = Color(0xFF18E699)
-private val GreenDim = Color(0xFF148526)
-private val Background = Color(0xFF0D1117)
-private val Surface = Color(0xFF161B22)
-private val SurfaceVariant = Color(0xFF1C2128)
-private val TextPrimary = Color(0xFFE6EDF3)
-private val TextMuted = Color(0xFF8B949E)
-private val Border = Color(0xFF30363D)
-private val ErrorRed = Color(0xFFF85149)
-
-private val ColorScheme =
-    darkColorScheme(
-        primary = Green,
-        onPrimary = Background,
-        primaryContainer = GreenDim,
-        onPrimaryContainer = TextPrimary,
-        secondary = GreenBright,
-        onSecondary = Background,
-        secondaryContainer = Color(0xFF0D3320),
-        onSecondaryContainer = GreenBright,
-        background = Background,
-        onBackground = TextPrimary,
-        surface = Surface,
-        onSurface = TextPrimary,
-        surfaceVariant = SurfaceVariant,
-        onSurfaceVariant = TextMuted,
-        outline = Border,
-        outlineVariant = Color(0xFF21262D),
-        error = ErrorRed,
-        onError = Background,
+@Composable
+private fun harkColorScheme(): ColorScheme {
+    val green = colorResource(R.color.hark_green)
+    val greenBright = colorResource(R.color.hark_green_bright)
+    val background = colorResource(R.color.hark_background)
+    val textPrimary = colorResource(R.color.hark_text_primary)
+    return darkColorScheme(
+        primary = green,
+        onPrimary = background,
+        primaryContainer = colorResource(R.color.hark_green_dim),
+        onPrimaryContainer = textPrimary,
+        secondary = greenBright,
+        onSecondary = background,
+        secondaryContainer = colorResource(R.color.hark_green_container),
+        onSecondaryContainer = greenBright,
+        background = background,
+        onBackground = textPrimary,
+        surface = colorResource(R.color.hark_surface),
+        onSurface = textPrimary,
+        surfaceVariant = colorResource(R.color.hark_surface_variant),
+        onSurfaceVariant = colorResource(R.color.hark_text_muted),
+        outline = colorResource(R.color.hark_border),
+        outlineVariant = colorResource(R.color.hark_border_subtle),
+        error = colorResource(R.color.hark_error),
+        onError = background,
     )
+}
 
 private val HarkTypography =
     Typography(
@@ -65,7 +62,7 @@ private val HarkTypography =
 @Composable
 fun HarkTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = ColorScheme,
+        colorScheme = harkColorScheme(),
         typography = HarkTypography,
         content = content,
     )

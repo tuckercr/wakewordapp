@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Single source of truth for the Hark CRT terminal palette.
+     Compose reads these through HarkTheme; drawables, the window theme, the launcher
+     icon and notifications reference them directly. Do not hardcode hex elsewhere. -->
 <resources>
-    <color name="colorPrimary">#b71c1c</color>
-    <color name="colorPrimaryDark">#7f0000</color>
-    <color name="colorAccent">#f05545</color>
-    <color name="altBackground">#e8e6d9</color>
+    <color name="hark_green">#1BBC68</color>
+    <color name="hark_green_bright">#18E699</color>
+    <color name="hark_green_dim">#148526</color>
+    <color name="hark_green_container">#0D3320</color>
+    <color name="hark_background">#0D1117</color>
+    <color name="hark_surface">#161B22</color>
+    <color name="hark_surface_variant">#1C2128</color>
+    <color name="hark_text_primary">#E6EDF3</color>
+    <color name="hark_text_muted">#8B949E</color>
+    <color name="hark_border">#30363D</color>
+    <color name="hark_border_subtle">#21262D</color>
+    <color name="hark_error">#F85149</color>
 </resources>

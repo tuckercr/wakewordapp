@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -96,16 +97,18 @@ private fun MicStateImage(
     micState: MicState,
     modifier: Modifier = Modifier,
 ) {
-    val drawableRes =
+    val colors = MaterialTheme.colorScheme
+    val (drawableRes, tint) =
         when (micState) {
-            MicState.DISABLED_NO_PERMISSION -> R.drawable.ic_mic_off_red_128dp
-            MicState.OFF -> R.drawable.ic_mic_light_gray_128dp
-            MicState.LISTENING -> R.drawable.ic_mic_gray_128dp
-            MicState.SPEAKING -> R.drawable.ic_mic_green_128dp
+            MicState.DISABLED_NO_PERMISSION -> R.drawable.ic_mic_off_128dp to colors.error
+            MicState.OFF -> R.drawable.ic_mic_128dp to colors.onSurfaceVariant.copy(alpha = 0.35f)
+            MicState.LISTENING -> R.drawable.ic_mic_128dp to colors.onSurfaceVariant
+            MicState.SPEAKING -> R.drawable.ic_mic_128dp to colors.primary
         }
     Image(
         painter = painterResource(drawableRes),
         contentDescription = null,
+        colorFilter = ColorFilter.tint(tint),
         modifier = modifier,
     )
 }

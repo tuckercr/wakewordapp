@@ -6,9 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 
 internal object NotificationUtils {
     private const val CHANNEL_ID_HOT_WORD = "hot_word_channel_id"
@@ -41,7 +41,7 @@ internal object NotificationUtils {
             ).apply {
                 description = context.getString(R.string.channel_desc_hotword)
                 enableLights(true)
-                lightColor = Color.RED
+                lightColor = ContextCompat.getColor(context, R.color.hark_green)
                 enableVibration(true)
                 vibrationPattern = VIBRATION_PATTERN
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
@@ -64,6 +64,7 @@ internal object NotificationUtils {
         return NotificationCompat
             .Builder(context, CHANNEL_ID_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_hearing)
+            .setColor(ContextCompat.getColor(context, R.color.hark_green))
             .setOngoing(true)
             .setContentTitle(context.getString(R.string.listening_for_hotword) + " \"$wakeWord\"")
             .setContentText(context.getString(R.string.the_test_app_is_still_running))
@@ -99,6 +100,7 @@ internal object NotificationUtils {
         return NotificationCompat
             .Builder(context, CHANNEL_ID_HOT_WORD)
             .setSmallIcon(R.drawable.ic_stat_hearing)
+            .setColor(ContextCompat.getColor(context, R.color.hark_green))
             .setAutoCancel(true)
             .setContentTitle(context.getString(R.string.hotword_detected))
             .setContentText(context.getString(R.string.the_hotword_was_heard_click_to_return_to_test_app))
