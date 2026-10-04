@@ -31,12 +31,19 @@ class WakePhraseTest {
 
     @Test
     fun `every unknown word is reported once`() {
-        assertEquals(WakePhrase.Validation.UnknownWords(listOf("aaa", "bbb")), WakePhrase.validate("aaa bbb aaa", dictionary))
+        assertEquals(WakePhrase.Validation.UnknownWords(listOf("aaa", "bbb")), WakePhrase.validate("aaa bbb", dictionary))
+        assertEquals(WakePhrase.Validation.UnknownWords(listOf("aaa")), WakePhrase.validate("aaa aaa", dictionary))
     }
 
     @Test
     fun `blank input is empty`() {
         assertEquals(WakePhrase.Validation.Empty, WakePhrase.validate("  ", dictionary))
+    }
+
+    @Test
+    fun `at most two words are allowed to stay close to a single wake word`() {
+        assertEquals(2, WakePhrase.MAX_WORDS)
+        assertEquals(WakePhrase.Validation.TooManyWords, WakePhrase.validate("ok harp hark", dictionary))
     }
 
     @Test

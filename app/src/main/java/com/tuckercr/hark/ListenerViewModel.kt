@@ -51,6 +51,7 @@ data class ListenerUiState(
     val supportsMicrophoneToggle: Boolean = false,
     val detectionAction: DetectionAction = DetectionAction.Default,
     val alertSettings: AlertSettings = AlertSettings(),
+    val isMuted: Boolean = false,
 )
 
 @HiltViewModel
@@ -186,6 +187,10 @@ class ListenerViewModel @Inject constructor(
     }
 
     fun setup() {
+        if (_uiState.value.isMuted) {
+            _uiState.update { it.copy(micState = MicState.OFF) }
+            return
+        }
         checkPermissions()
         if (!_uiState.value.isMicrophonePermissionGranted) {
             _uiState.update { it.copy(micState = MicState.DISABLED_NO_PERMISSION) }
@@ -198,7 +203,7 @@ class ListenerViewModel @Inject constructor(
             return
         }
 
-        val tuning = KeywordTuning.forSensitivity(_uiState.value.sensitivity)
+        val tuning = KeywordTuning.forSensitivity(_uiState.value.sensitivity, WakePhrase.words(wakeWord).size)
         Log.d(TAG, "setup: wakeWord=$wakeWord tuning=$tuning")
 
         setupJob?.cancel()
@@ -249,6 +254,21 @@ class ListenerViewModel @Inject constructor(
         viewModelScope.launch { preferencesManager.setSensitivity(clamped) }
         shutdownRecognizer()
         setup()
+    }
+
+    /**
+     * Mute stops listening right now and keeps it stopped (including across onResume) until unmuted.
+     * It is deliberately not persisted: a fresh launch listens again.
+     */
+    fun setMuted(muted: Boolean) {
+        if (_uiState.value.isMuted == muted) return
+        _uiState.update { it.copy(isMuted = muted) }
+        if (muted) {
+            chimePlayer.stop()
+            shutdownRecognizer()
+        } else {
+            setup()
+        }
     }
 
     fun setWakeWord(word: String) {

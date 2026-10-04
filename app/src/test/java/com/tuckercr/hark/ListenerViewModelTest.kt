@@ -202,6 +202,46 @@ class ListenerViewModelTest {
 
     // endregion
 
+    // region — mute
+
+    @Test
+    fun `setMuted true mutes stops the chime and turns the mic off`() {
+        viewModel.setMuted(true)
+        assertTrue(viewModel.uiState.value.isMuted)
+        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
+        verify { chimePlayer.stop() }
+    }
+
+    @Test
+    fun `setup while muted stays off instead of starting the recognizer`() {
+        viewModel.setMuted(true)
+        viewModel.setup()
+        // Without the mute check this would be DISABLED_NO_PERMISSION, since permission is denied here.
+        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `setMuted false unmutes and sets up again`() {
+        viewModel.setMuted(true)
+        viewModel.setMuted(false)
+        assertFalse(viewModel.uiState.value.isMuted)
+        assertEquals(MicState.DISABLED_NO_PERMISSION, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `setMuted with the same value changes nothing`() {
+        val before = viewModel.uiState.value
+        viewModel.setMuted(false)
+        assertEquals(before, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `a fresh view model is not muted`() {
+        assertFalse(newViewModel().uiState.value.isMuted)
+    }
+
+    // endregion
+
     // region — clearWakeWordTriggered
 
     @Test

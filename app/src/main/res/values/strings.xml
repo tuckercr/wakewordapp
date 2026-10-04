@@ -37,12 +37,15 @@
     <string name="settings_duration_30s">30 seconds</string>
     <string name="settings_duration_until_dismissed">Until dismissed</string>
     <string name="wake_word_label">Wake word</string>
-    <string name="wake_word_hint">Type a word or a short phrase</string>
+    <string name="wake_word_hint">Type a word. Two words also work, like \u201cok harp\u201d.</string>
     <string name="wake_word_listening">Listening for \u201c%1$s\u201d</string>
     <string name="wake_word_press_done">Press Done to listen for \u201c%1$s\u201d</string>
     <string name="wake_word_unknown">%1$s is not in the dictionary. Still listening for \u201c%2$s\u201d.</string>
     <string name="wake_word_unknown_suggest">%1$s is not in the dictionary. Did you mean: %2$s? Still listening for \u201c%3$s\u201d.</string>
     <string name="wake_word_too_many">Use up to %1$d words. Still listening for \u201c%2$s\u201d.</string>
+    <string name="mute_button">Mute</string>
+    <string name="unmute_button">Unmute</string>
+    <string name="muted_status">Muted. Hark is not listening.</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="do_you_want_to_stop_the_recognizer">Do you want to stop the recognizer?</string>

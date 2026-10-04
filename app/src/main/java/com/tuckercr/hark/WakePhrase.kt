@@ -6,7 +6,7 @@ package com.tuckercr.hark
  * word of the phrase is validated against it.
  */
 object WakePhrase {
-    const val MAX_WORDS = 4
+    const val MAX_WORDS = 2
     private const val MAX_SUGGESTIONS = 3
     private const val MAX_EDIT_DISTANCE = 2
     private val whitespace = Regex("\\s+")

@@ -1,6 +1,7 @@
 package com.tuckercr.hark.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -24,6 +26,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +42,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,6 +57,7 @@ import com.tuckercr.hark.ui.theme.HarkTheme
 fun ListenerScreen(
     uiState: ListenerUiState,
     onWakeWordSelected: (String) -> Unit,
+    onMuteChanged: (Boolean) -> Unit,
     onSettingsClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -66,11 +71,13 @@ fun ListenerScreen(
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp),
+                        .padding(8.dp)
+                        .size(72.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
+                    contentDescription = stringResource(R.string.settings_title),
+                    modifier = Modifier.size(36.dp),
                 )
             }
 
@@ -85,8 +92,23 @@ fun ListenerScreen(
 
                 MicStateImage(
                     micState = uiState.micState,
-                    modifier = Modifier.size(128.dp),
+                    isMuted = uiState.isMuted,
+                    modifier =
+                        Modifier
+                            .size(128.dp)
+                            .clickable(
+                                onClickLabel =
+                                    stringResource(
+                                        if (uiState.isMuted) R.string.unmute_button else R.string.mute_button,
+                                    ),
+                                role = Role.Button,
+                                onClick = { onMuteChanged(!uiState.isMuted) },
+                            ),
                 )
+
+                Spacer(Modifier.height(16.dp))
+
+                MuteButton(isMuted = uiState.isMuted, onClick = { onMuteChanged(!uiState.isMuted) })
 
                 Spacer(Modifier.height(24.dp))
 
@@ -104,17 +126,40 @@ fun ListenerScreen(
 }
 
 @Composable
+private fun MuteButton(
+    isMuted: Boolean,
+    onClick: () -> Unit,
+) {
+    if (isMuted) {
+        Button(onClick = onClick) { Text(stringResource(R.string.unmute_button)) }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.muted_status),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        OutlinedButton(onClick = onClick) { Text(stringResource(R.string.mute_button)) }
+    }
+}
+
+@Composable
 private fun MicStateImage(
     micState: MicState,
+    isMuted: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val (drawableRes, tint) =
-        when (micState) {
-            MicState.DISABLED_NO_PERMISSION -> R.drawable.ic_mic_off_128dp to colors.error
-            MicState.OFF -> R.drawable.ic_mic_128dp to colors.onSurfaceVariant.copy(alpha = 0.35f)
-            MicState.LISTENING -> R.drawable.ic_mic_128dp to colors.onSurfaceVariant
-            MicState.SPEAKING -> R.drawable.ic_mic_128dp to colors.primary
+        if (isMuted) {
+            R.drawable.ic_mic_off_128dp to colors.onSurfaceVariant
+        } else {
+            when (micState) {
+                MicState.DISABLED_NO_PERMISSION -> R.drawable.ic_mic_off_128dp to colors.error
+                MicState.OFF -> R.drawable.ic_mic_128dp to colors.onSurfaceVariant.copy(alpha = 0.35f)
+                MicState.LISTENING -> R.drawable.ic_mic_128dp to colors.onSurfaceVariant
+                MicState.SPEAKING -> R.drawable.ic_mic_128dp to colors.primary
+            }
         }
     Image(
         painter = painterResource(drawableRes),
@@ -270,6 +315,7 @@ private fun ListenerScreenPreview() {
                     dictionaryWords = listOf("Hotword", "Example", "Test"),
                 ),
             onWakeWordSelected = {},
+            onMuteChanged = {},
             onSettingsClicked = {},
         )
     }

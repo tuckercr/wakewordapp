@@ -67,12 +67,16 @@ No audio ever leaves the device. The microphone feed is consumed entirely by Poc
 
 ## Testing
 
-81 unit tests across seven classes, all running on the JVM without Robolectric:
+133 unit tests across 11 classes, all running on the JVM without Robolectric:
 
-- **`ListenerViewModelTest`** (40) — initial state, permission transitions, all `RecognitionListener` callbacks (begin/end/partial/result), re-trigger guard, sensitivity (clamping, persistence, loading the saved value on startup, the threshold mapping), wake-word flow updates, `onCleared`
-- **`PreferencesManagerTest`** (16) — real `DataStore` backed by a temp file; covers read, write, overwrite, and clear for wake word, onboarding, sensitivity, and the detection action
+- **`ListenerViewModelTest`** (50) — initial state, permission transitions, all `RecognitionListener` callbacks (begin/end/partial/result), re-trigger guard, sensitivity, mute, alert settings, wake-word flow updates and phrase normalization, `onCleared`
+- **`PreferencesManagerTest`** (21) — real `DataStore` backed by a temp file; covers read, write, overwrite, and clear for wake word, onboarding, sensitivity, alert sound and duration, and the detection action
+- **`WakePhraseTest`** (15) — phrase normalization, per-word dictionary validation, the two-word limit, completions, and "did you mean" suggestions
 - **`ListenerUiStateTest`** (11) — data class semantics and copy behaviour
+- **`KeywordTuningTest`** (9) — the sensitivity table: strictness ordering, clamping, and the shift for two-word phrases
+- **`AlertSettingsTest`** (8) — alert sound picking, duration limits, and the 5 second default
 - **`NotificationUtilsTest`** (6) — vibration pattern, notification IDs
+- **`MainActivityTest`** (5) — when the listener service should start (wake word known, permissions granted, not muted)
 - **`BootReceiverTest`** (3) — the service starts after boot only when a wake word is configured
 - **`BrandColorsTest`** (3) — fails if hex colors appear in drawables or Kotlin outside `colors.xml`, so the palette stays in one place
 - **`MicStateTest`** (2) — enum completeness
@@ -81,7 +85,7 @@ Key testing choices:
 
 - `ContextCompat.checkSelfPermission` routes through `context.checkPermission(permission, pid, uid)` on the JVM (SDK\_INT = 0 path). Stubbing `checkPermission` on the mock `Application` gives full permission control without `mockkStatic`.
 - `returnDefaultValues = true` makes Android stub methods return 0/null instead of throwing, so coroutines in the `ViewModel` init block run to completion.
-- `recognitionListener`, `thresholdFor`, and `BootReceiver.startIfWakeWordConfigured` are `internal` so tests call them directly instead of going through Android components.
+- `recognitionListener`, `shouldStartListenerService`, `WakePhrase`, `KeywordTuning`, and `BootReceiver.startIfWakeWordConfigured` are pure or `internal` so tests call them directly instead of going through Android components.
 
 CI runs `./gradlew lint test build` and `./gradlew ktlintCheck` on every push and pull request.
 
