@@ -27,4 +27,6 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="do_you_want_to_stop_the_recognizer">Do you want to stop the recognizer?</string>
+    <string name="tap_to_resume_listening">Tap to resume listening</string>
+    <string name="resume_listening_text">Hark restarted. Tap to listen for \"%1$s\" again.</string>
 </resources>
