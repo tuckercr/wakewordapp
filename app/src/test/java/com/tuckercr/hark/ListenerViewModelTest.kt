@@ -199,20 +199,6 @@ class ListenerViewModelTest {
         assertEquals(1, newViewModel().uiState.value.sensitivity)
     }
 
-    @Test
-    fun `thresholdFor minimum is the strictest and maximum the loosest`() {
-        assertEquals(1e-1f, ListenerViewModel.thresholdFor(ListenerViewModel.MIN_SENSITIVITY))
-        assertEquals(1e-19f, ListenerViewModel.thresholdFor(ListenerViewModel.MAX_SENSITIVITY))
-    }
-
-    @Test
-    fun `thresholdFor never underflows to zero and decreases monotonically`() {
-        val thresholds = (ListenerViewModel.MIN_SENSITIVITY..ListenerViewModel.MAX_SENSITIVITY)
-            .map { ListenerViewModel.thresholdFor(it) }
-        assertTrue(thresholds.all { it > 0f })
-        assertEquals(thresholds.sortedDescending(), thresholds)
-    }
-
     // endregion
 
     // region — clearWakeWordTriggered

@@ -192,8 +192,8 @@ class ListenerViewModel @Inject constructor(
             return
         }
 
-        val threshold = thresholdFor(_uiState.value.sensitivity)
-        Log.d(TAG, "setup: wakeWord=$wakeWord threshold=$threshold")
+        val tuning = KeywordTuning.forSensitivity(_uiState.value.sensitivity)
+        Log.d(TAG, "setup: wakeWord=$wakeWord tuning=$tuning")
 
         setupJob?.cancel()
         setupJob =
@@ -211,7 +211,9 @@ class ListenerViewModel @Inject constructor(
                                 .defaultSetup()
                                 .setAcousticModel(File(assetsDir, "models/en-us-ptm"))
                                 .setDictionary(File(assetsDir, "models/lm/words.dic"))
-                                .setKeywordThreshold(threshold)
+                                .setKeywordThreshold(tuning.threshold)
+                                .setFloat("-kws_plp", tuning.phoneLoopProbability.toDouble())
+                                .setInteger("-kws_delay", tuning.delayFrames)
                                 .recognizer
                         }
                     newRecognizer.addKeyphraseSearch(HOT_WORD_SEARCH, wakeWord)
@@ -318,19 +320,8 @@ class ListenerViewModel @Inject constructor(
     companion object {
         private const val TAG = "ListenerViewModel"
         private const val HOT_WORD_SEARCH = "HOT_WORD_SEARCH"
-        const val MIN_SENSITIVITY = 1
-        const val MAX_SENSITIVITY = 10
-        const val DEFAULT_SENSITIVITY = 3
-
-        /**
-         * Maps the 1..10 slider to a PocketSphinx keyword threshold of 1e-(2n-1): 1e-1 (strictest,
-         * fewest false alarms) up to 1e-19 (most sensitive). Smaller thresholds fire more easily.
-         * Short words like "hark" need the strict end. The exponent is capped well above the
-         * Float underflow point (~1e-45), where the threshold collapses to 0 and fires on noise.
-         */
-        internal fun thresholdFor(sensitivity: Int): Float {
-            val n = sensitivity.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)
-            return "1.e-${2 * n - 1}".toFloat()
-        }
+        const val MIN_SENSITIVITY = KeywordTuning.MIN_SENSITIVITY
+        const val MAX_SENSITIVITY = KeywordTuning.MAX_SENSITIVITY
+        const val DEFAULT_SENSITIVITY = KeywordTuning.DEFAULT_SENSITIVITY
     }
 }

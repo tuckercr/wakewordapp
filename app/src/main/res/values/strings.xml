@@ -23,7 +23,7 @@
     <string name="settings_action_choose">Choose app</string>
     <string name="settings_action_picker_title">On detection, open…</string>
     <string name="settings_sensitivity_title">Wake Word Sensitivity</string>
-    <string name="settings_sensitivity_description">A lower value requires clearer speech and cuts false alarms. A higher value triggers more easily but may mishear similar words. If the wake word fires when you did not say it, move the slider toward 1.</string>
+    <string name="settings_sensitivity_description">Lower values cut false alarms and need clearer speech, but respond a little slower. Higher values react faster and trigger more easily. Similar sounding words such as \'hard\' or \'park\' can still trigger a short wake word like \'hark\'. A longer, more distinctive word works best.</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="do_you_want_to_stop_the_recognizer">Do you want to stop the recognizer?</string>
