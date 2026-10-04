@@ -44,7 +44,8 @@ No audio ever leaves the device. The microphone feed is consumed entirely by Poc
 - **MVVM** — `ListenerViewModel` owns all recogniser state and exposes it as a single `StateFlow<ListenerUiState>`. The Activity and Compose screens observe this flow; they never touch the recogniser directly.
 - **Foreground service** — Android 14+ requires microphone foreground services to be started while the app is in the foreground. `ListenerService` is started from `onResume` to satisfy this constraint, then keeps running in the background.
 - **Hilt** — `SpeechRecognizer`, `ChimePlayer`, and `DictionaryRepository` are injected; `PreferencesManager` wraps a `DataStore<Preferences>` injected through `AppModule`.
-- **DataStore** — wake word choice and onboarding state survive process death.
+- **DataStore** — wake word, sensitivity, detection action, and onboarding state survive process death.
+- **Boot persistence** — `BootReceiver` restarts the listener after a reboot when a wake word is configured.
 - **Permission recovery** — if the user sets microphone permission to "Ask Every Time" and force-closes the app, `onResume` re-requests the permission once per Activity session using `ActivityResultContracts.RequestMultiplePermissions`, with a flag to prevent a loop when the dialog dismissal triggers another `onResume`.
 
 ---
@@ -92,4 +93,7 @@ CI runs `./gradlew lint test build` and `./gradlew ktlintCheck` on every push an
 |---|---|
 | `RECORD_AUDIO` | Microphone input for wake-word detection |
 | `POST_NOTIFICATIONS` | Heads-up alert when the word is heard |
+| `FOREGROUND_SERVICE` | Run the listener as a foreground service |
 | `FOREGROUND_SERVICE_MICROPHONE` | Keep the listener alive in the background |
+| `VIBRATE` | Vibrate when the word is heard |
+| `RECEIVE_BOOT_COMPLETED` | Restart the listener after the device reboots |
