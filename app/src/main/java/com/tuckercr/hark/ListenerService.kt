@@ -31,9 +31,17 @@ class ListenerService : Service() {
                             0
                         },
                     )
+                    NotificationUtils.cancelResumeListeningNotification(this)
                 } catch (e: SecurityException) {
                     Log.e(TAG, "Cannot start microphone foreground service: ${e.message}")
                     stopSelf()
+                } catch (e: IllegalStateException) {
+                    // ForegroundServiceStartNotAllowedException (API 31+) extends
+                    // IllegalStateException, e.g. when started from a background context.
+                    Log.e(TAG, "Foreground service start not allowed: ${e.message}")
+                    NotificationUtils.showResumeListeningNotification(this, wakeWord)
+                    stopSelf()
+                    return START_NOT_STICKY
                 }
             }
             ACTION_STOP_FOREGROUND -> {
