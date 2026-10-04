@@ -15,12 +15,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tuckercr.hark.R
 import com.tuckercr.hark.ui.theme.HarkTheme
 
@@ -44,6 +43,7 @@ fun WakeWordDetectedScreen(
             Image(
                 painter = painterResource(R.drawable.ic_happy_36),
                 contentDescription = null,
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                 modifier = Modifier.size(96.dp),
             )
 
@@ -51,15 +51,14 @@ fun WakeWordDetectedScreen(
 
             Text(
                 text = stringResource(R.string.hotword_detected),
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineMedium,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = stringResource(R.string.click_below_to_return),
-                fontSize = 18.sp,
+                style = MaterialTheme.typography.bodyLarge,
             )
 
             Spacer(modifier = Modifier.height(32.dp))
