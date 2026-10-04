@@ -1,17 +1,23 @@
 package com.tuckercr.hark.di
 
+import android.app.Application
 import android.content.Context
 import android.hardware.SensorPrivacyManager
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.tuckercr.hark.ChimePlayer
+import com.tuckercr.hark.ListenerEngine
 import com.tuckercr.hark.prefs.PreferencesManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 private const val PREFERENCE_NAME = "com.tuckercr.zamzam.prefs"
@@ -31,6 +37,20 @@ object AppModule {
     fun providePreferencesManager(
         @ApplicationContext context: Context,
     ): PreferencesManager = PreferencesManager(context.dataStore)
+
+    @Provides
+    @Singleton
+    fun provideListenerEngine(
+        application: Application,
+        preferencesManager: PreferencesManager,
+        chimePlayer: ChimePlayer,
+    ): ListenerEngine =
+        ListenerEngine(
+            application,
+            preferencesManager,
+            chimePlayer,
+            CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
 
     @android.annotation.SuppressLint("NewApi")
     @Provides

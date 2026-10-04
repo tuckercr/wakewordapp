@@ -115,6 +115,8 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing) { // Only stop if NOT a configuration change
             startService(ListenerService.createStopForegroundIntent(this))
+            // Mute is not persisted: the next launch listens again.
+            viewModel.setMuted(false)
         }
         super.onDestroy()
     }
