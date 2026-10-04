@@ -12,7 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -22,6 +25,9 @@ import com.tuckercr.hark.ui.screens.SettingsScreen
 import com.tuckercr.hark.ui.screens.WakeWordDetectedScreen
 import com.tuckercr.hark.ui.theme.HarkTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -50,27 +56,42 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+
+        // Must start the microphone FGS while the activity is resumed: Android 14+ blocks
+        // startForeground(type=microphone) unless the process is in PROCESS_STATE_TOP. The wake
+        // word loads asynchronously from DataStore, so on a cold start it is still blank at the
+        // first onResume. Collecting it while RESUMED starts the service as soon as it is known,
+        // and again on every resume (including after the permission dialog is dismissed).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                viewModel.uiState
+                    .map { it.wakeWord }
+                    .distinctUntilChanged()
+                    .collect { wakeWord ->
+                        if (shouldStartListenerService(wakeWord, hasListenerPermissions())) {
+                            startForegroundService(
+                                ListenerService.createStartForegroundIntent(this@MainActivity, wakeWord),
+                            )
+                        }
+                    }
+            }
+        }
     }
+
+    private fun hasListenerPermissions(): Boolean =
+        buildList {
+            add(Manifest.permission.RECORD_AUDIO)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
 
     override fun onResume() {
         super.onResume()
         viewModel.checkPermissions()
         viewModel.setup()
-        // Must start the microphone FGS while the activity is resumed — Android 14+ blocks
-        // startForeground(type=microphone) unless the process is in PROCESS_STATE_TOP.
-        val wakeWord = viewModel.uiState.value.wakeWord
-        val hasPermission =
-            buildList {
-                add(Manifest.permission.RECORD_AUDIO)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    add(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }.all {
-                ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
-            }
-        if (wakeWord.isNotBlank() && hasPermission) {
-            startForegroundService(ListenerService.createStartForegroundIntent(this, wakeWord))
-        } else if (!hasPermission &&
+        val hasPermission = hasListenerPermissions()
+        if (!hasPermission &&
             viewModel.onboardingCompleteFlow.value == true &&
             !permissionRequestedThisSession
         ) {
@@ -100,6 +121,11 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_HOT_WORD_DETECTED = "open_hw_detected"
     }
 }
+
+internal fun shouldStartListenerService(
+    wakeWord: String,
+    hasPermission: Boolean,
+): Boolean = wakeWord.isNotBlank() && hasPermission
 
 @Composable
 private fun HarkApp(
