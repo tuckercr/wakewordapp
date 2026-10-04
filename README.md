@@ -9,6 +9,23 @@ The original use case was accessibility: alerting a hearing-impaired user the mo
 
 ---
 
+## Screenshots
+
+<table>
+<tr>
+<td><img src="screenshots/main.png" width="180" alt="Main screen"/></td>
+<td><img src="screenshots/triggered.png" width="180" alt="Wake word detected"/></td>
+<td><img src="screenshots/fg_service.png" width="180" alt="Background service notification"/></td>
+</tr>
+<tr>
+<td align="center">Main screen</td>
+<td align="center">Wake word detected</td>
+<td align="center">Background notification</td>
+</tr>
+</table>
+
+---
+
 ## How the on-device recognition works
 
 PocketSphinx bundles a pre-trained acoustic model (CMU US English, PTM variant) and a pronunciation dictionary of ~130k words. At runtime, Hark:
@@ -76,20 +93,3 @@ CI runs `./gradlew lint test build` and `./gradlew ktlintCheck` on every push an
 | `RECORD_AUDIO` | Microphone input for wake-word detection |
 | `POST_NOTIFICATIONS` | Heads-up alert when the word is heard |
 | `FOREGROUND_SERVICE_MICROPHONE` | Keep the listener alive in the background |
-
----
-
-## Screenshots
-
-<table>
-<tr>
-<td><img src="screenshots/main.png" width="180" alt="Main screen"/></td>
-<td><img src="screenshots/triggered.png" width="180" alt="Wake word detected"/></td>
-<td><img src="screenshots/fg_service.png" width="180" alt="Background service notification"/></td>
-</tr>
-<tr>
-<td align="center">Main screen</td>
-<td align="center">Wake word detected</td>
-<td align="center">Background notification</td>
-</tr>
-</table>
