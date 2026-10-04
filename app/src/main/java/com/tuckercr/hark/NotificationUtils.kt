@@ -11,7 +11,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 
 internal object NotificationUtils {
-    private const val CHANNEL_ID_HOT_WORD = "hot_word_channel_id"
+    private const val LEGACY_CHANNEL_ID_HOT_WORD = "hot_word_channel_id"
+    private const val CHANNEL_ID_HOT_WORD = "hot_word_silent_channel_id"
     private const val CHANNEL_ID_SERVICE = "main_channel_id"
     const val NOTIFICATION_ID_SERVICE = 42
     const val NOTIFICATION_ID_HOT_WORD = 43
@@ -33,6 +34,9 @@ internal object NotificationUtils {
             }
         nm.createNotificationChannel(serviceChannel)
 
+        // The old channel played the default notification sound on top of the chime, and a channel's
+        // sound cannot be changed after creation, so it is replaced by a silent one.
+        nm.deleteNotificationChannel(LEGACY_CHANNEL_ID_HOT_WORD)
         val hotWordChannel =
             NotificationChannel(
                 CHANNEL_ID_HOT_WORD,
@@ -40,6 +44,7 @@ internal object NotificationUtils {
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 description = context.getString(R.string.channel_desc_hotword)
+                setSound(null, null)
                 enableLights(true)
                 lightColor = ContextCompat.getColor(context, R.color.hark_green)
                 enableVibration(true)

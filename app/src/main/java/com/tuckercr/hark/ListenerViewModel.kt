@@ -50,6 +50,8 @@ data class ListenerUiState(
     val isMicrophonePrivacyEnabled: Boolean = false,
     val supportsMicrophoneToggle: Boolean = false,
     val detectionAction: DetectionAction = DetectionAction.Default,
+    val alertSettings: AlertSettings = AlertSettings(),
+    val isMuted: Boolean = false,
 )
 
 @HiltViewModel
@@ -87,7 +89,7 @@ class ListenerViewModel @Inject constructor(
                 val wakeWord = _uiState.value.wakeWord
                 if (text == wakeWord || text.contains(wakeWord)) {
                     _uiState.update { it.copy(wakeWordTriggered = text, micState = MicState.OFF) }
-                    chimePlayer.play()
+                    chimePlayer.play(_uiState.value.alertSettings)
                     vibrateForWakeWord()
                     postWakeWordNotification()
                     // Stop and start again to clear the hypothesis buffer for the next detection
@@ -128,6 +130,11 @@ class ListenerViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesManager.detectionActionFlow.collectLatest { action ->
                 _uiState.update { it.copy(detectionAction = action) }
+            }
+        }
+        viewModelScope.launch {
+            preferencesManager.alertSettingsFlow.collectLatest { settings ->
+                _uiState.update { it.copy(alertSettings = settings) }
             }
         }
         loadDictionaryWords()
@@ -180,6 +187,10 @@ class ListenerViewModel @Inject constructor(
     }
 
     fun setup() {
+        if (_uiState.value.isMuted) {
+            _uiState.update { it.copy(micState = MicState.OFF) }
+            return
+        }
         checkPermissions()
         if (!_uiState.value.isMicrophonePermissionGranted) {
             _uiState.update { it.copy(micState = MicState.DISABLED_NO_PERMISSION) }
@@ -192,7 +203,7 @@ class ListenerViewModel @Inject constructor(
             return
         }
 
-        val tuning = KeywordTuning.forSensitivity(_uiState.value.sensitivity)
+        val tuning = KeywordTuning.forSensitivity(_uiState.value.sensitivity, WakePhrase.words(wakeWord).size)
         Log.d(TAG, "setup: wakeWord=$wakeWord tuning=$tuning")
 
         setupJob?.cancel()
@@ -245,10 +256,44 @@ class ListenerViewModel @Inject constructor(
         setup()
     }
 
-    fun setWakeWord(word: String) {
-        viewModelScope.launch {
-            preferencesManager.updateWakeWord(word)
+    /**
+     * Mute stops listening right now and keeps it stopped (including across onResume) until unmuted.
+     * It is deliberately not persisted: a fresh launch listens again.
+     */
+    fun setMuted(muted: Boolean) {
+        if (_uiState.value.isMuted == muted) return
+        _uiState.update { it.copy(isMuted = muted) }
+        if (muted) {
+            chimePlayer.stop()
+            shutdownRecognizer()
+        } else {
+            setup()
         }
+    }
+
+    fun setWakeWord(word: String) {
+        val phrase = WakePhrase.normalize(word)
+        if (phrase.isEmpty()) return
+        viewModelScope.launch {
+            preferencesManager.updateWakeWord(phrase)
+        }
+    }
+
+    fun setAlertSound(sound: AlertSound) {
+        viewModelScope.launch { preferencesManager.setAlertSound(sound) }
+    }
+
+    fun setAlertDuration(duration: AlertDuration) {
+        viewModelScope.launch { preferencesManager.setAlertDuration(duration) }
+    }
+
+    /** Plays the alert with the current settings so the user can hear what a detection sounds like. */
+    fun previewAlert(settings: AlertSettings = _uiState.value.alertSettings) {
+        chimePlayer.play(settings)
+    }
+
+    fun stopAlert() {
+        chimePlayer.stop()
     }
 
     fun clearWakeWordTriggered() {

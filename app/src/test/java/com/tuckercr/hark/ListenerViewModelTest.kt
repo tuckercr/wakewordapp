@@ -52,6 +52,7 @@ class ListenerViewModelTest {
         every { preferencesManager.wakeWordFlow } returns flowOf("testword")
         every { preferencesManager.onboardingCompleteFlow } returns flowOf(false)
         every { preferencesManager.sensitivityFlow } returns flowOf(null)
+        every { preferencesManager.alertSettingsFlow } returns flowOf(AlertSettings())
         every { dictionaryRepository.loadList() } returns emptyList()
 
         denyPermission()
@@ -201,6 +202,46 @@ class ListenerViewModelTest {
 
     // endregion
 
+    // region — mute
+
+    @Test
+    fun `setMuted true mutes stops the chime and turns the mic off`() {
+        viewModel.setMuted(true)
+        assertTrue(viewModel.uiState.value.isMuted)
+        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
+        verify { chimePlayer.stop() }
+    }
+
+    @Test
+    fun `setup while muted stays off instead of starting the recognizer`() {
+        viewModel.setMuted(true)
+        viewModel.setup()
+        // Without the mute check this would be DISABLED_NO_PERMISSION, since permission is denied here.
+        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `setMuted false unmutes and sets up again`() {
+        viewModel.setMuted(true)
+        viewModel.setMuted(false)
+        assertFalse(viewModel.uiState.value.isMuted)
+        assertEquals(MicState.DISABLED_NO_PERMISSION, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `setMuted with the same value changes nothing`() {
+        val before = viewModel.uiState.value
+        viewModel.setMuted(false)
+        assertEquals(before, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `a fresh view model is not muted`() {
+        assertFalse(newViewModel().uiState.value.isMuted)
+    }
+
+    // endregion
+
     // region — clearWakeWordTriggered
 
     @Test
@@ -223,6 +264,51 @@ class ListenerViewModelTest {
     fun `setWakeWord delegates to preferences manager`() {
         viewModel.setWakeWord("hello")
         coVerify { preferencesManager.updateWakeWord("hello") }
+    }
+
+    @Test
+    fun `setWakeWord normalizes a multi word phrase`() {
+        viewModel.setWakeWord("  OK   Harp ")
+        coVerify { preferencesManager.updateWakeWord("ok harp") }
+    }
+
+    @Test
+    fun `setWakeWord ignores a blank phrase`() {
+        viewModel.setWakeWord("   ")
+        coVerify(exactly = 0) { preferencesManager.updateWakeWord(any()) }
+    }
+
+    @Test
+    fun `setAlertSound persists the sound`() {
+        viewModel.setAlertSound(AlertSound.Silent)
+        coVerify { preferencesManager.setAlertSound(AlertSound.Silent) }
+    }
+
+    @Test
+    fun `setAlertDuration persists the duration`() {
+        viewModel.setAlertDuration(AlertDuration.SECONDS_10)
+        coVerify { preferencesManager.setAlertDuration(AlertDuration.SECONDS_10) }
+    }
+
+    @Test
+    fun `saved alert settings are loaded on startup`() {
+        val saved = AlertSettings(AlertSound.Custom("content://x/1"), AlertDuration.UNTIL_DISMISSED)
+        every { preferencesManager.alertSettingsFlow } returns flowOf(saved)
+        assertEquals(saved, newViewModel().uiState.value.alertSettings)
+    }
+
+    @Test
+    fun `previewAlert plays with the current alert settings`() {
+        val saved = AlertSettings(AlertSound.Silent, AlertDuration.ONCE)
+        every { preferencesManager.alertSettingsFlow } returns flowOf(saved)
+        newViewModel().previewAlert()
+        verify { chimePlayer.play(saved) }
+    }
+
+    @Test
+    fun `stopAlert stops the chime`() {
+        viewModel.stopAlert()
+        verify { chimePlayer.stop() }
     }
 
     @Test
@@ -301,7 +387,7 @@ class ListenerViewModelTest {
         viewModel.recognitionListener.onPartialResult(hypothesis)
         assertEquals("testword", viewModel.uiState.value.wakeWordTriggered)
         assertEquals(MicState.OFF, viewModel.uiState.value.micState)
-        verify { chimePlayer.play() }
+        verify { chimePlayer.play(any()) }
     }
 
     @Test
@@ -318,7 +404,7 @@ class ListenerViewModelTest {
         every { hypothesis.hypstr } returns "completely different"
         viewModel.recognitionListener.onPartialResult(hypothesis)
         assertNull(viewModel.uiState.value.wakeWordTriggered)
-        verify(exactly = 0) { chimePlayer.play() }
+        verify(exactly = 0) { chimePlayer.play(any()) }
     }
 
     @Test
@@ -329,7 +415,7 @@ class ListenerViewModelTest {
         clearMocks(chimePlayer)
         every { chimePlayer.stop() } returns Unit // re-stub after clearMocks
         viewModel.recognitionListener.onPartialResult(hypothesis)
-        verify(exactly = 0) { chimePlayer.play() }
+        verify(exactly = 0) { chimePlayer.play(any()) }
     }
 
     @Test

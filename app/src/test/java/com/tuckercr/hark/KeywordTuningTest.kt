@@ -42,4 +42,21 @@ class KeywordTuningTest {
         assertTrue(KeywordTuning.DEFAULT_SENSITIVITY in KeywordTuning.MIN_SENSITIVITY..KeywordTuning.MAX_SENSITIVITY)
         assertTrue(KeywordTuning.forSensitivity(KeywordTuning.DEFAULT_SENSITIVITY).delayFrames > 10)
     }
+
+    @Test
+    fun `a two word phrase starts more lenient than a single word`() {
+        assertEquals(KeywordTuning.forSensitivity(7), KeywordTuning.forSensitivity(4, wordCount = 2))
+    }
+
+    @Test
+    fun `the shift for extra words stops at the most sensitive level`() {
+        assertEquals(levels.last(), KeywordTuning.forSensitivity(KeywordTuning.MAX_SENSITIVITY, wordCount = 2))
+        assertEquals(levels.last(), KeywordTuning.forSensitivity(9, wordCount = 2))
+    }
+
+    @Test
+    fun `a single word or no word is not shifted`() {
+        assertEquals(KeywordTuning.forSensitivity(4), KeywordTuning.forSensitivity(4, wordCount = 1))
+        assertEquals(KeywordTuning.forSensitivity(4), KeywordTuning.forSensitivity(4, wordCount = 0))
+    }
 }
