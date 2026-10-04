@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.tuckercr.hark.DetectionAction
+import com.tuckercr.hark.ListenerViewModel
 import com.tuckercr.hark.R
 import com.tuckercr.hark.ui.theme.HarkTheme
 
@@ -118,7 +119,8 @@ fun SettingsScreen(
                 value = sliderValue,
                 onValueChange = { sliderValue = it },
                 onValueChangeFinished = { onSensitivityChanged(sliderValue.toInt()) },
-                valueRange = 1f..100f,
+                valueRange = ListenerViewModel.MIN_SENSITIVITY.toFloat()..ListenerViewModel.MAX_SENSITIVITY.toFloat(),
+                steps = ListenerViewModel.MAX_SENSITIVITY - ListenerViewModel.MIN_SENSITIVITY - 1,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -245,7 +247,7 @@ private fun AppRow(
 private fun SettingsScreenPreview() {
     HarkTheme {
         SettingsScreen(
-            sensitivity = 20,
+            sensitivity = 3,
             onSensitivityChanged = {},
             detectionAction = DetectionAction.Default,
             onDetectionActionChanged = {},

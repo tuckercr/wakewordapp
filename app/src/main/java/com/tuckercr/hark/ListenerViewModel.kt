@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -110,6 +111,11 @@ class ListenerViewModel @Inject constructor(
         checkPermissions()
         viewModelScope.launch {
             preferencesManager.wakeWordFlow.collectLatest { word ->
+                // Load the saved sensitivity before the first setup() so the recognizer never
+                // starts with the default and then restarts.
+                preferencesManager.sensitivityFlow.firstOrNull()?.let { saved ->
+                    _uiState.update { it.copy(sensitivity = saved.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)) }
+                }
                 val wakeWord = word ?: application.getString(R.string.default_wake_word)
                 if (_uiState.value.wakeWord != wakeWord) {
                     _uiState.update { it.copy(wakeWord = wakeWord) }
@@ -186,7 +192,7 @@ class ListenerViewModel @Inject constructor(
             return
         }
 
-        val threshold = ("1.e-" + 2 * _uiState.value.sensitivity).toFloat()
+        val threshold = thresholdFor(_uiState.value.sensitivity)
         Log.d(TAG, "setup: wakeWord=$wakeWord threshold=$threshold")
 
         setupJob?.cancel()
@@ -229,8 +235,10 @@ class ListenerViewModel @Inject constructor(
     }
 
     fun setSensitivity(value: Int) {
-        if (_uiState.value.sensitivity == value) return
-        _uiState.update { it.copy(sensitivity = value) }
+        if (_uiState.value.sensitivity == value.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)) return
+        val clamped = value.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)
+        _uiState.update { it.copy(sensitivity = clamped) }
+        viewModelScope.launch { preferencesManager.setSensitivity(clamped) }
         shutdownRecognizer()
         setup()
     }
@@ -310,6 +318,19 @@ class ListenerViewModel @Inject constructor(
     companion object {
         private const val TAG = "ListenerViewModel"
         private const val HOT_WORD_SEARCH = "HOT_WORD_SEARCH"
+        const val MIN_SENSITIVITY = 1
+        const val MAX_SENSITIVITY = 10
         const val DEFAULT_SENSITIVITY = 3
+
+        /**
+         * Maps the 1..10 slider to a PocketSphinx keyword threshold of 1e-(2n-1): 1e-1 (strictest,
+         * fewest false alarms) up to 1e-19 (most sensitive). Smaller thresholds fire more easily.
+         * Short words like "hark" need the strict end. The exponent is capped well above the
+         * Float underflow point (~1e-45), where the threshold collapses to 0 and fires on noise.
+         */
+        internal fun thresholdFor(sensitivity: Int): Float {
+            val n = sensitivity.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)
+            return "1.e-${2 * n - 1}".toFloat()
+        }
     }
 }

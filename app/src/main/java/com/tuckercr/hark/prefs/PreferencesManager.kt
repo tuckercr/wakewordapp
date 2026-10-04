@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.tuckercr.hark.DetectionAction
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,7 @@ class PreferencesManager(
     object PreferencesKeys {
         val WAKE_WORD = stringPreferencesKey("wake_word")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
+        val SENSITIVITY = intPreferencesKey("sensitivity")
         val DETECTION_ACTION_TYPE = stringPreferencesKey("detection_action_type")
         val DETECTION_ACTION_PACKAGE = stringPreferencesKey("detection_action_package")
         val DETECTION_ACTION_NAME = stringPreferencesKey("detection_action_name")
@@ -29,6 +31,8 @@ class PreferencesManager(
         }
 
     val wakeWordFlow: Flow<String?> = safeData.map { it[PreferencesKeys.WAKE_WORD] }
+
+    val sensitivityFlow: Flow<Int?> = safeData.map { it[PreferencesKeys.SENSITIVITY] }
 
     val onboardingCompleteFlow: Flow<Boolean> =
         safeData.map { it[PreferencesKeys.ONBOARDING_COMPLETE] ?: false }
@@ -47,6 +51,10 @@ class PreferencesManager(
 
     suspend fun updateWakeWord(wakeWord: String) {
         dataStore.edit { it[PreferencesKeys.WAKE_WORD] = wakeWord }
+    }
+
+    suspend fun setSensitivity(sensitivity: Int) {
+        dataStore.edit { it[PreferencesKeys.SENSITIVITY] = sensitivity }
     }
 
     suspend fun setOnboardingComplete(complete: Boolean) {
