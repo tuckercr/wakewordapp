@@ -48,9 +48,9 @@
     <string name="muted_status">Muted. Hark is not listening.</string>
     <string name="channel_name_resume">Resume Listening</string>
     <string name="channel_desc_resume">Asks you to reopen Hark after a restart so it can listen again</string>
-    <string name="resume_listening_title">Hark is not listening</string>
-    <string name="resume_listening_text">Tap to start listening for \u201c%1$s\u201d</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="do_you_want_to_stop_the_recognizer">Do you want to stop the recognizer?</string>
+    <string name="tap_to_resume_listening">Tap to resume listening</string>
+    <string name="resume_listening_text">Hark restarted. Tap to listen for \"%1$s\" again.</string>
 </resources>

@@ -67,7 +67,7 @@ No audio ever leaves the device. The microphone feed is consumed entirely by Poc
 
 ## Testing
 
-148 unit tests across 12 classes, all running on the JVM without Robolectric:
+149 unit tests across 12 classes, all running on the JVM without Robolectric:
 
 - **`ListenerViewModelTest`** (37) — mirroring the engine state into the UI, permission handling, sensitivity, alert settings, phrase normalization, and delegation to the engine
 - **`ListenerEngineTest`** (24) — all `RecognitionListener` callbacks, detection and the re-arm cooldown, mute, and the start/stop lifecycle
@@ -78,7 +78,7 @@ No audio ever leaves the device. The microphone feed is consumed entirely by Poc
 - **`AlertSettingsTest`** (8) — alert sound picking, duration limits, and the 5 second default
 - **`NotificationUtilsTest`** (6) — vibration pattern, notification IDs
 - **`MainActivityTest`** (5) — when the listener service should start (wake word known, permissions granted, not muted)
-- **`BootReceiverTest`** (7) — after a reboot: a resume notification on Android 11+, a direct start before that, and the default wake word
+- **`BootReceiverTest`** (8) — after a reboot: a resume notification on Android 11+ (including the 14+ case), a direct start before that with a fallback if Android refuses, and the default wake word
 - **`BrandColorsTest`** (3) — fails if hex colors appear in drawables or Kotlin outside `colors.xml`, so the palette stays in one place
 - **`MicStateTest`** (2) — enum completeness
 

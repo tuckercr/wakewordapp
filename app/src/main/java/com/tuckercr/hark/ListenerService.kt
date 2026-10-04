@@ -7,7 +7,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -42,16 +41,18 @@ class ListenerService : Service() {
                             0
                         },
                     )
+                    NotificationUtils.cancelResumeListeningNotification(this)
                 } catch (e: SecurityException) {
                     Log.e(TAG, "Cannot start microphone foreground service: ${e.message}")
                     return stopWithoutListening()
                 } catch (e: IllegalStateException) {
-                    // ForegroundServiceStartNotAllowedException: Android 15+ refuses a microphone
-                    // foreground service started from BOOT_COMPLETED or any other background context.
+                    // ForegroundServiceStartNotAllowedException (API 31+) extends IllegalStateException:
+                    // Android 15+ refuses a microphone foreground service started from BOOT_COMPLETED
+                    // or any other background context. Ask the user to reopen the app instead.
                     Log.e(TAG, "Not allowed to start microphone foreground service: ${e.message}")
+                    NotificationUtils.showResumeListeningNotification(this, wakeWord)
                     return stopWithoutListening()
                 }
-                NotificationManagerCompat.from(this).cancel(NotificationUtils.NOTIFICATION_ID_RESUME)
                 engine.start()
             }
             ACTION_STOP_FOREGROUND -> {
