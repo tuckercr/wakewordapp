@@ -9,6 +9,23 @@ The original use case was accessibility: alerting a hearing-impaired user the mo
 
 ---
 
+## Screenshots
+
+<table>
+<tr>
+<td><img src="screenshots/main.png" width="180" alt="Main screen"/></td>
+<td><img src="screenshots/triggered.png" width="180" alt="Wake word detected"/></td>
+<td><img src="screenshots/fg_service.png" width="180" alt="Background service notification"/></td>
+</tr>
+<tr>
+<td align="center">Main screen</td>
+<td align="center">Wake word detected</td>
+<td align="center">Background notification</td>
+</tr>
+</table>
+
+---
+
 ## How the on-device recognition works
 
 PocketSphinx bundles a pre-trained acoustic model (CMU US English, PTM variant) and a pronunciation dictionary of ~130k words. At runtime, Hark:
@@ -27,7 +44,8 @@ No audio ever leaves the device. The microphone feed is consumed entirely by Poc
 - **MVVM** — `ListenerViewModel` owns all recogniser state and exposes it as a single `StateFlow<ListenerUiState>`. The Activity and Compose screens observe this flow; they never touch the recogniser directly.
 - **Foreground service** — Android 14+ requires microphone foreground services to be started while the app is in the foreground. `ListenerService` is started from `onResume` to satisfy this constraint, then keeps running in the background.
 - **Hilt** — `SpeechRecognizer`, `ChimePlayer`, and `DictionaryRepository` are injected; `PreferencesManager` wraps a `DataStore<Preferences>` injected through `AppModule`.
-- **DataStore** — wake word choice and onboarding state survive process death.
+- **DataStore** — wake word, sensitivity, detection action, and onboarding state survive process death.
+- **Boot persistence** — `BootReceiver` restarts the listener after a reboot when a wake word is configured.
 - **Permission recovery** — if the user sets microphone permission to "Ask Every Time" and force-closes the app, `onResume` re-requests the permission once per Activity session using `ActivityResultContracts.RequestMultiplePermissions`, with a flag to prevent a loop when the dialog dismissal triggers another `onResume`.
 
 ---
@@ -49,19 +67,23 @@ No audio ever leaves the device. The microphone feed is consumed entirely by Poc
 
 ## Testing
 
-64 unit tests across five classes, all running on the JVM without Robolectric:
+81 unit tests across seven classes, all running on the JVM without Robolectric:
 
-- **`ListenerViewModelTest`** (35) — initial state, permission transitions, all `RecognitionListener` callbacks (begin/end/partial/result), re-trigger guard, sensitivity changes, wake-word flow updates, `onCleared`
-- **`PreferencesManagerTest`** (10) — real `DataStore` backed by a temp file; covers read, write, overwrite, and clear for both preferences
+- **`ListenerViewModelTest`** (40) — initial state, permission transitions, all `RecognitionListener` callbacks (begin/end/partial/result), re-trigger guard, sensitivity (clamping, persistence, loading the saved value on startup, the threshold mapping), wake-word flow updates, `onCleared`
+- **`PreferencesManagerTest`** (16) — real `DataStore` backed by a temp file; covers read, write, overwrite, and clear for wake word, onboarding, sensitivity, and the detection action
 - **`ListenerUiStateTest`** (11) — data class semantics and copy behaviour
 - **`NotificationUtilsTest`** (6) — vibration pattern, notification IDs
+- **`BootReceiverTest`** (3) — the service starts after boot only when a wake word is configured
+- **`BrandColorsTest`** (3) — fails if hex colors appear in drawables or Kotlin outside `colors.xml`, so the palette stays in one place
 - **`MicStateTest`** (2) — enum completeness
 
 Key testing choices:
 
 - `ContextCompat.checkSelfPermission` routes through `context.checkPermission(permission, pid, uid)` on the JVM (SDK\_INT = 0 path). Stubbing `checkPermission` on the mock `Application` gives full permission control without `mockkStatic`.
 - `returnDefaultValues = true` makes Android stub methods return 0/null instead of throwing, so coroutines in the `ViewModel` init block run to completion.
-- `recognitionListener` is `internal` so tests call its callbacks directly and assert on the resulting `uiState`.
+- `recognitionListener`, `thresholdFor`, and `BootReceiver.startIfWakeWordConfigured` are `internal` so tests call them directly instead of going through Android components.
+
+CI runs `./gradlew lint test build` and `./gradlew ktlintCheck` on every push and pull request.
 
 ---
 
@@ -71,21 +93,7 @@ Key testing choices:
 |---|---|
 | `RECORD_AUDIO` | Microphone input for wake-word detection |
 | `POST_NOTIFICATIONS` | Heads-up alert when the word is heard |
+| `FOREGROUND_SERVICE` | Run the listener as a foreground service |
 | `FOREGROUND_SERVICE_MICROPHONE` | Keep the listener alive in the background |
-
----
-
-## Screenshots
-
-<table>
-<tr>
-<td><img src="screenshots/main.png" width="180" alt="Main screen"/></td>
-<td><img src="screenshots/triggered.png" width="180" alt="Wake word detected"/></td>
-<td><img src="screenshots/fg_service.png" width="180" alt="Background service notification"/></td>
-</tr>
-<tr>
-<td align="center">Main screen</td>
-<td align="center">Wake word detected</td>
-<td align="center">Background notification</td>
-</tr>
-</table>
+| `VIBRATE` | Vibrate when the word is heard |
+| `RECEIVE_BOOT_COMPLETED` | Restart the listener after the device reboots |

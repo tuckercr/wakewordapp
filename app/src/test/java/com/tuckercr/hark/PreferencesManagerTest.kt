@@ -44,6 +44,20 @@ class PreferencesManagerTest {
         }
 
     @Test
+    fun `sensitivityFlow emits null when no preference is set`() =
+        runBlocking {
+            assertNull(createManager().sensitivityFlow.first())
+        }
+
+    @Test
+    fun `setSensitivity persists the value`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setSensitivity(2)
+            assertEquals(2, pm.sensitivityFlow.first())
+        }
+
+    @Test
     fun `updateWakeWord overwrites the previous value`() =
         runBlocking<Unit> {
             val pm = createManager()

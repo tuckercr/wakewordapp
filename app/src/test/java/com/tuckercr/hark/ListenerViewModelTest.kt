@@ -51,6 +51,7 @@ class ListenerViewModelTest {
 
         every { preferencesManager.wakeWordFlow } returns flowOf("testword")
         every { preferencesManager.onboardingCompleteFlow } returns flowOf(false)
+        every { preferencesManager.sensitivityFlow } returns flowOf(null)
         every { dictionaryRepository.loadList() } returns emptyList()
 
         denyPermission()
@@ -178,6 +179,24 @@ class ListenerViewModelTest {
         val newValue = ListenerViewModel.DEFAULT_SENSITIVITY + 1
         viewModel.setSensitivity(newValue)
         assertEquals(MicState.DISABLED_NO_PERMISSION, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `setSensitivity persists the value`() {
+        viewModel.setSensitivity(2)
+        coVerify { preferencesManager.setSensitivity(2) }
+    }
+
+    @Test
+    fun `setSensitivity clamps out of range values`() {
+        viewModel.setSensitivity(500)
+        assertEquals(ListenerViewModel.MAX_SENSITIVITY, viewModel.uiState.value.sensitivity)
+    }
+
+    @Test
+    fun `saved sensitivity is loaded on startup`() {
+        every { preferencesManager.sensitivityFlow } returns flowOf(1)
+        assertEquals(1, newViewModel().uiState.value.sensitivity)
     }
 
     // endregion
