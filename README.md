@@ -49,19 +49,23 @@ No audio ever leaves the device. The microphone feed is consumed entirely by Poc
 
 ## Testing
 
-64 unit tests across five classes, all running on the JVM without Robolectric:
+81 unit tests across seven classes, all running on the JVM without Robolectric:
 
-- **`ListenerViewModelTest`** (35) — initial state, permission transitions, all `RecognitionListener` callbacks (begin/end/partial/result), re-trigger guard, sensitivity changes, wake-word flow updates, `onCleared`
-- **`PreferencesManagerTest`** (10) — real `DataStore` backed by a temp file; covers read, write, overwrite, and clear for both preferences
+- **`ListenerViewModelTest`** (40) — initial state, permission transitions, all `RecognitionListener` callbacks (begin/end/partial/result), re-trigger guard, sensitivity (clamping, persistence, loading the saved value on startup, the threshold mapping), wake-word flow updates, `onCleared`
+- **`PreferencesManagerTest`** (16) — real `DataStore` backed by a temp file; covers read, write, overwrite, and clear for wake word, onboarding, sensitivity, and the detection action
 - **`ListenerUiStateTest`** (11) — data class semantics and copy behaviour
 - **`NotificationUtilsTest`** (6) — vibration pattern, notification IDs
+- **`BootReceiverTest`** (3) — the service starts after boot only when a wake word is configured
+- **`BrandColorsTest`** (3) — fails if hex colors appear in drawables or Kotlin outside `colors.xml`, so the palette stays in one place
 - **`MicStateTest`** (2) — enum completeness
 
 Key testing choices:
 
 - `ContextCompat.checkSelfPermission` routes through `context.checkPermission(permission, pid, uid)` on the JVM (SDK\_INT = 0 path). Stubbing `checkPermission` on the mock `Application` gives full permission control without `mockkStatic`.
 - `returnDefaultValues = true` makes Android stub methods return 0/null instead of throwing, so coroutines in the `ViewModel` init block run to completion.
-- `recognitionListener` is `internal` so tests call its callbacks directly and assert on the resulting `uiState`.
+- `recognitionListener`, `thresholdFor`, and `BootReceiver.startIfWakeWordConfigured` are `internal` so tests call them directly instead of going through Android components.
+
+CI runs `./gradlew lint test build` and `./gradlew ktlintCheck` on every push and pull request.
 
 ---
 
