@@ -3,8 +3,6 @@ package com.tuckercr.hark
 import android.app.Application
 import android.content.pm.PackageManager
 import com.tuckercr.hark.prefs.PreferencesManager
-import edu.cmu.pocketsphinx.Hypothesis
-import io.mockk.clearMocks
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -15,7 +13,6 @@ import kotlinx.coroutines.flow.flowOf
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -39,6 +36,8 @@ class ListenerViewModelTest {
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var chimePlayer: ChimePlayer
     private lateinit var dictionaryRepository: DictionaryRepository
+    private lateinit var engine: ListenerEngine
+    private lateinit var engineState: MutableStateFlow<EngineState>
     private lateinit var viewModel: ListenerViewModel
 
     @Before
@@ -48,10 +47,14 @@ class ListenerViewModelTest {
         preferencesManager = mockk(relaxed = true)
         chimePlayer = mockk(relaxed = true)
         dictionaryRepository = mockk(relaxed = true)
+        engine = mockk(relaxed = true)
+        engineState = MutableStateFlow(EngineState())
+        every { engine.state } returns engineState
 
         every { preferencesManager.wakeWordFlow } returns flowOf("testword")
         every { preferencesManager.onboardingCompleteFlow } returns flowOf(false)
         every { preferencesManager.sensitivityFlow } returns flowOf(null)
+        every { preferencesManager.alertSettingsFlow } returns flowOf(AlertSettings())
         every { dictionaryRepository.loadList() } returns emptyList()
 
         denyPermission()
@@ -121,39 +124,49 @@ class ListenerViewModelTest {
     // region — setup
 
     @Test
-    fun `setup with denied permission sets DISABLED_NO_PERMISSION`() {
-        viewModel.shutdownRecognizer()
-        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
-        viewModel.setup()
-        assertEquals(MicState.DISABLED_NO_PERMISSION, viewModel.uiState.value.micState)
-    }
-
-    @Test
-    fun `setup with granted permission but blank wakeWord does not start listener`() {
+    fun `setup rechecks permissions and lets the engine recover`() {
         grantPermission()
-        every { preferencesManager.wakeWordFlow } returns flowOf(null)
-        every { application.getString(any<Int>()) } returns ""
-
-        val vm = newViewModel()
-        vm.setup()
-
-        assertEquals(MicState.OFF, vm.uiState.value.micState)
+        viewModel.setup()
+        assertTrue(viewModel.uiState.value.isMicrophonePermissionGranted)
+        verify { engine.refresh() }
     }
 
     // endregion
 
-    // region — shutdownRecognizer
+    // region — engine state is mirrored into the UI
 
     @Test
-    fun `shutdownRecognizer sets micState to OFF`() {
-        viewModel.shutdownRecognizer()
-        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
+    fun `listening engine shows as listening when permission is granted`() {
+        grantPermission()
+        viewModel.checkPermissions()
+        engineState.value = EngineState(micState = MicState.LISTENING)
+        assertEquals(MicState.LISTENING, viewModel.uiState.value.micState)
     }
 
     @Test
-    fun `shutdownRecognizer clears wakeWordTriggered`() {
-        viewModel.shutdownRecognizer()
-        assertNull(viewModel.uiState.value.wakeWordTriggered)
+    fun `listening engine still shows disabled without permission`() {
+        engineState.value = EngineState(micState = MicState.LISTENING)
+        assertEquals(MicState.DISABLED_NO_PERMISSION, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `granting permission after the engine reported listening updates the mic state`() {
+        engineState.value = EngineState(micState = MicState.LISTENING)
+        grantPermission()
+        viewModel.checkPermissions()
+        assertEquals(MicState.LISTENING, viewModel.uiState.value.micState)
+    }
+
+    @Test
+    fun `a detection in the engine is shown to the UI`() {
+        engineState.value = EngineState(micState = MicState.OFF, wakeWordTriggered = "testword")
+        assertEquals("testword", viewModel.uiState.value.wakeWordTriggered)
+    }
+
+    @Test
+    fun `mute in the engine is shown to the UI`() {
+        engineState.value = EngineState(isMuted = true)
+        assertTrue(viewModel.uiState.value.isMuted)
     }
 
     // endregion
@@ -172,13 +185,6 @@ class ListenerViewModelTest {
         val newValue = ListenerViewModel.DEFAULT_SENSITIVITY + 1
         viewModel.setSensitivity(newValue)
         assertEquals(newValue, viewModel.uiState.value.sensitivity)
-    }
-
-    @Test
-    fun `setSensitivity with new value triggers setup which rechecks permissions`() {
-        val newValue = ListenerViewModel.DEFAULT_SENSITIVITY + 1
-        viewModel.setSensitivity(newValue)
-        assertEquals(MicState.DISABLED_NO_PERMISSION, viewModel.uiState.value.micState)
     }
 
     @Test
@@ -201,18 +207,29 @@ class ListenerViewModelTest {
 
     // endregion
 
-    // region — clearWakeWordTriggered
+    // region — mute
 
     @Test
-    fun `clearWakeWordTriggered stops the chime player`() {
-        viewModel.clearWakeWordTriggered()
-        verify { chimePlayer.stop() }
+    fun `setMuted delegates to the engine`() {
+        viewModel.setMuted(true)
+        verify { engine.setMuted(true) }
+        viewModel.setMuted(false)
+        verify { engine.setMuted(false) }
     }
 
     @Test
-    fun `clearWakeWordTriggered clears wakeWordTriggered`() {
+    fun `a fresh view model is not muted`() {
+        assertFalse(newViewModel().uiState.value.isMuted)
+    }
+
+    // endregion
+
+    // region — clearWakeWordTriggered
+
+    @Test
+    fun `clearWakeWordTriggered clears the detection in the engine`() {
         viewModel.clearWakeWordTriggered()
-        assertNull(viewModel.uiState.value.wakeWordTriggered)
+        verify { engine.clearTriggered() }
     }
 
     // endregion
@@ -223,6 +240,51 @@ class ListenerViewModelTest {
     fun `setWakeWord delegates to preferences manager`() {
         viewModel.setWakeWord("hello")
         coVerify { preferencesManager.updateWakeWord("hello") }
+    }
+
+    @Test
+    fun `setWakeWord normalizes a multi word phrase`() {
+        viewModel.setWakeWord("  OK   Harp ")
+        coVerify { preferencesManager.updateWakeWord("ok harp") }
+    }
+
+    @Test
+    fun `setWakeWord ignores a blank phrase`() {
+        viewModel.setWakeWord("   ")
+        coVerify(exactly = 0) { preferencesManager.updateWakeWord(any()) }
+    }
+
+    @Test
+    fun `setAlertSound persists the sound`() {
+        viewModel.setAlertSound(AlertSound.Silent)
+        coVerify { preferencesManager.setAlertSound(AlertSound.Silent) }
+    }
+
+    @Test
+    fun `setAlertDuration persists the duration`() {
+        viewModel.setAlertDuration(AlertDuration.SECONDS_10)
+        coVerify { preferencesManager.setAlertDuration(AlertDuration.SECONDS_10) }
+    }
+
+    @Test
+    fun `saved alert settings are loaded on startup`() {
+        val saved = AlertSettings(AlertSound.Custom("content://x/1"), AlertDuration.UNTIL_DISMISSED)
+        every { preferencesManager.alertSettingsFlow } returns flowOf(saved)
+        assertEquals(saved, newViewModel().uiState.value.alertSettings)
+    }
+
+    @Test
+    fun `previewAlert plays with the current alert settings`() {
+        val saved = AlertSettings(AlertSound.Silent, AlertDuration.ONCE)
+        every { preferencesManager.alertSettingsFlow } returns flowOf(saved)
+        newViewModel().previewAlert()
+        verify { chimePlayer.play(saved) }
+    }
+
+    @Test
+    fun `stopAlert stops the chime`() {
+        viewModel.stopAlert()
+        verify { chimePlayer.stop() }
     }
 
     @Test
@@ -268,94 +330,6 @@ class ListenerViewModelTest {
 
     // endregion
 
-    // region — recognitionListener callbacks
-
-    @Test
-    fun `onBeginningOfSpeech sets micState to SPEAKING`() {
-        viewModel.recognitionListener.onBeginningOfSpeech()
-        assertEquals(MicState.SPEAKING, viewModel.uiState.value.micState)
-    }
-
-    @Test
-    fun `onEndOfSpeech sets micState to LISTENING`() {
-        viewModel.recognitionListener.onEndOfSpeech()
-        assertEquals(MicState.LISTENING, viewModel.uiState.value.micState)
-    }
-
-    @Test
-    fun `onResult sets micState to LISTENING`() {
-        viewModel.recognitionListener.onResult(null)
-        assertEquals(MicState.LISTENING, viewModel.uiState.value.micState)
-    }
-
-    @Test
-    fun `onPartialResult with null hypothesis does nothing`() {
-        viewModel.recognitionListener.onPartialResult(null)
-        assertNull(viewModel.uiState.value.wakeWordTriggered)
-    }
-
-    @Test
-    fun `onPartialResult with matching word triggers detection`() {
-        val hypothesis = mockk<Hypothesis>()
-        every { hypothesis.hypstr } returns "testword"
-        viewModel.recognitionListener.onPartialResult(hypothesis)
-        assertEquals("testword", viewModel.uiState.value.wakeWordTriggered)
-        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
-        verify { chimePlayer.play() }
-    }
-
-    @Test
-    fun `onPartialResult with text containing wake word triggers detection`() {
-        val hypothesis = mockk<Hypothesis>()
-        every { hypothesis.hypstr } returns "please testword now"
-        viewModel.recognitionListener.onPartialResult(hypothesis)
-        assertNotNull(viewModel.uiState.value.wakeWordTriggered)
-    }
-
-    @Test
-    fun `onPartialResult with non-matching text does not trigger detection`() {
-        val hypothesis = mockk<Hypothesis>()
-        every { hypothesis.hypstr } returns "completely different"
-        viewModel.recognitionListener.onPartialResult(hypothesis)
-        assertNull(viewModel.uiState.value.wakeWordTriggered)
-        verify(exactly = 0) { chimePlayer.play() }
-    }
-
-    @Test
-    fun `onPartialResult when already triggered does not re-trigger`() {
-        val hypothesis = mockk<Hypothesis>()
-        every { hypothesis.hypstr } returns "testword"
-        viewModel.recognitionListener.onPartialResult(hypothesis)
-        clearMocks(chimePlayer)
-        every { chimePlayer.stop() } returns Unit // re-stub after clearMocks
-        viewModel.recognitionListener.onPartialResult(hypothesis)
-        verify(exactly = 0) { chimePlayer.play() }
-    }
-
-    @Test
-    fun `onPartialResult with null hypstr does nothing`() {
-        val hypothesis = mockk<Hypothesis>()
-        every { hypothesis.hypstr } returns null
-        viewModel.recognitionListener.onPartialResult(hypothesis)
-        assertNull(viewModel.uiState.value.wakeWordTriggered)
-    }
-
-    // endregion
-
-    // region — onCleared
-
-    @Test
-    fun `onCleared shuts down recognizer and stops chime`() {
-        viewModel.javaClass.getDeclaredMethod("onCleared").apply {
-            isAccessible = true
-            invoke(viewModel)
-        }
-        assertEquals(MicState.OFF, viewModel.uiState.value.micState)
-        verify(atLeast = 1) { chimePlayer.stop() }
-    }
-
-    // endregion
-
     // region — wake word flow update
 
     @Test
@@ -394,6 +368,7 @@ class ListenerViewModelTest {
             preferencesManager = preferencesManager,
             chimePlayer = chimePlayer,
             dictionaryRepository = dictionaryRepository,
+            engine = engine,
             sensorPrivacyManager = null,
         )
 

@@ -51,18 +51,22 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
+    /**
+     * On Android 11+ a microphone foreground service started from the background has no microphone
+     * access (and Android 15+ throws for BOOT_COMPLETED), so ask the user to tap a notification
+     * instead: it opens MainActivity, which starts the service from the foreground. Older versions
+     * can start the listener directly.
+     */
     internal suspend fun startIfWakeWordConfigured(
         context: Context,
         preferencesManager: PreferencesManager,
         sdkInt: Int = Build.VERSION.SDK_INT,
     ) {
-        val wakeWord = preferencesManager.wakeWordFlow.first()
-        if (wakeWord.isNullOrBlank()) return
+        // A wake word that was never changed is not stored; the app treats that as the default.
+        val wakeWord = preferencesManager.wakeWordFlow.first() ?: context.getString(R.string.default_wake_word)
+        if (wakeWord.isBlank()) return
 
-        // Android 14+ forbids starting a microphone FGS from BOOT_COMPLETED. Ask the user to
-        // resume instead; tapping the notification opens MainActivity, which starts the service
-        // from the foreground.
-        if (sdkInt >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (sdkInt >= Build.VERSION_CODES.R) {
             Log.i(TAG, "Boot: posting resume-listening notification for \"$wakeWord\"")
             NotificationUtils.showResumeListeningNotification(context, wakeWord)
             return

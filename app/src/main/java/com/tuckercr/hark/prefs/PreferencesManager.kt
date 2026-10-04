@@ -7,6 +7,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.tuckercr.hark.AlertDuration
+import com.tuckercr.hark.AlertSettings
+import com.tuckercr.hark.AlertSound
 import com.tuckercr.hark.DetectionAction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -20,6 +23,8 @@ class PreferencesManager(
         val WAKE_WORD = stringPreferencesKey("wake_word")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val SENSITIVITY = intPreferencesKey("sensitivity")
+        val ALERT_SOUND = stringPreferencesKey("alert_sound")
+        val ALERT_DURATION = stringPreferencesKey("alert_duration")
         val DETECTION_ACTION_TYPE = stringPreferencesKey("detection_action_type")
         val DETECTION_ACTION_PACKAGE = stringPreferencesKey("detection_action_package")
         val DETECTION_ACTION_NAME = stringPreferencesKey("detection_action_name")
@@ -33,6 +38,18 @@ class PreferencesManager(
     val wakeWordFlow: Flow<String?> = safeData.map { it[PreferencesKeys.WAKE_WORD] }
 
     val sensitivityFlow: Flow<Int?> = safeData.map { it[PreferencesKeys.SENSITIVITY] }
+
+    /** Absent key means the default alarm tone, an empty string means silent, anything else is a URI. */
+    val alertSettingsFlow: Flow<AlertSettings> =
+        safeData.map { prefs ->
+            val sound =
+                when (val stored = prefs[PreferencesKeys.ALERT_SOUND]) {
+                    null -> AlertSound.Default
+                    "" -> AlertSound.Silent
+                    else -> AlertSound.Custom(stored)
+                }
+            AlertSettings(sound, AlertDuration.fromName(prefs[PreferencesKeys.ALERT_DURATION]))
+        }
 
     val onboardingCompleteFlow: Flow<Boolean> =
         safeData.map { it[PreferencesKeys.ONBOARDING_COMPLETE] ?: false }
@@ -55,6 +72,20 @@ class PreferencesManager(
 
     suspend fun setSensitivity(sensitivity: Int) {
         dataStore.edit { it[PreferencesKeys.SENSITIVITY] = sensitivity }
+    }
+
+    suspend fun setAlertSound(sound: AlertSound) {
+        dataStore.edit { prefs ->
+            when (sound) {
+                is AlertSound.Default -> prefs.remove(PreferencesKeys.ALERT_SOUND)
+                is AlertSound.Silent -> prefs[PreferencesKeys.ALERT_SOUND] = ""
+                is AlertSound.Custom -> prefs[PreferencesKeys.ALERT_SOUND] = sound.uri
+            }
+        }
+    }
+
+    suspend fun setAlertDuration(duration: AlertDuration) {
+        dataStore.edit { it[PreferencesKeys.ALERT_DURATION] = duration.name }
     }
 
     suspend fun setOnboardingComplete(complete: Boolean) {

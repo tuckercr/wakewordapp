@@ -13,11 +13,13 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 
 internal object NotificationUtils {
-    private const val CHANNEL_ID_HOT_WORD = "hot_word_channel_id"
+    private const val LEGACY_CHANNEL_ID_HOT_WORD = "hot_word_channel_id"
+    private const val CHANNEL_ID_HOT_WORD = "hot_word_silent_channel_id"
     private const val CHANNEL_ID_SERVICE = "main_channel_id"
     const val NOTIFICATION_ID_SERVICE = 42
     const val NOTIFICATION_ID_HOT_WORD = 43
     const val NOTIFICATION_ID_RESUME = 44
+    private const val CHANNEL_ID_RESUME = "resume_listening_channel_id"
     val VIBRATION_PATTERN = longArrayOf(0, 1000, 500, 1000, 500)
 
     fun initChannels(context: Context) {
@@ -36,6 +38,9 @@ internal object NotificationUtils {
             }
         nm.createNotificationChannel(serviceChannel)
 
+        // The old channel played the default notification sound on top of the chime, and a channel's
+        // sound cannot be changed after creation, so it is replaced by a silent one.
+        nm.deleteNotificationChannel(LEGACY_CHANNEL_ID_HOT_WORD)
         val hotWordChannel =
             NotificationChannel(
                 CHANNEL_ID_HOT_WORD,
@@ -43,6 +48,7 @@ internal object NotificationUtils {
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
                 description = context.getString(R.string.channel_desc_hotword)
+                setSound(null, null)
                 enableLights(true)
                 lightColor = ContextCompat.getColor(context, R.color.hark_green)
                 enableVibration(true)
@@ -50,6 +56,18 @@ internal object NotificationUtils {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
         nm.createNotificationChannel(hotWordChannel)
+
+        val resumeChannel =
+            NotificationChannel(
+                CHANNEL_ID_RESUME,
+                context.getString(R.string.channel_name_resume),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = context.getString(R.string.channel_desc_resume)
+                setSound(null, null)
+                enableVibration(false)
+            }
+        nm.createNotificationChannel(resumeChannel)
     }
 
     fun createServiceNotification(
@@ -77,7 +95,11 @@ internal object NotificationUtils {
             .build()
     }
 
-    /** Posted after boot on Android 14+, where the microphone FGS can't start in the background. */
+    /**
+     * Android 11+ will not give a microphone foreground service started from the background (such
+     * as after boot) access to the microphone, and Android 15+ throws. So the user is asked to tap
+     * this notification, which opens the app and starts listening from the foreground.
+     */
     fun showResumeListeningNotification(
         context: Context,
         wakeWord: String,
@@ -98,13 +120,14 @@ internal object NotificationUtils {
             )
         val notification =
             NotificationCompat
-                .Builder(context, CHANNEL_ID_SERVICE)
+                .Builder(context, CHANNEL_ID_RESUME)
                 .setSmallIcon(R.drawable.ic_stat_hearing)
                 .setColor(ContextCompat.getColor(context, R.color.hark_green))
                 .setAutoCancel(true)
                 .setContentTitle(context.getString(R.string.tap_to_resume_listening))
                 .setContentText(context.getString(R.string.resume_listening_text, wakeWord))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setContentIntent(pendingIntent)
                 .build()
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

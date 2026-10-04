@@ -3,42 +3,26 @@ package com.tuckercr.hark
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Application
-import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.SensorPrivacyManager
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tuckercr.hark.prefs.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import edu.cmu.pocketsphinx.Assets
-import edu.cmu.pocketsphinx.Hypothesis
-import edu.cmu.pocketsphinx.RecognitionListener
-import edu.cmu.pocketsphinx.SpeechRecognizer
-import edu.cmu.pocketsphinx.SpeechRecognizerSetup
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.IOException
 import javax.inject.Inject
-
-enum class MicState { DISABLED_NO_PERMISSION, LISTENING, SPEAKING, OFF }
 
 data class ListenerUiState(
     val micState: MicState = MicState.OFF,
@@ -50,6 +34,8 @@ data class ListenerUiState(
     val isMicrophonePrivacyEnabled: Boolean = false,
     val supportsMicrophoneToggle: Boolean = false,
     val detectionAction: DetectionAction = DetectionAction.Default,
+    val alertSettings: AlertSettings = AlertSettings(),
+    val isMuted: Boolean = false,
 )
 
 @HiltViewModel
@@ -58,6 +44,7 @@ class ListenerViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager,
     private val chimePlayer: ChimePlayer,
     private val dictionaryRepository: DictionaryRepository,
+    private val engine: ListenerEngine,
     @SuppressLint("NewApi") private val sensorPrivacyManager: SensorPrivacyManager?,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ListenerUiState())
@@ -67,61 +54,29 @@ class ListenerViewModel @Inject constructor(
         preferencesManager.onboardingCompleteFlow
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private var recognizer: SpeechRecognizer? = null
-    private var setupJob: Job? = null
-
-    internal val recognitionListener =
-        object : RecognitionListener {
-            override fun onBeginningOfSpeech() {
-                _uiState.update { it.copy(micState = MicState.SPEAKING) }
-            }
-
-            override fun onEndOfSpeech() {
-                _uiState.update { it.copy(micState = MicState.LISTENING) }
-            }
-
-            override fun onPartialResult(hypothesis: Hypothesis?) {
-                hypothesis ?: return
-                val text = hypothesis.hypstr ?: return
-                if (_uiState.value.wakeWordTriggered != null) return
-                val wakeWord = _uiState.value.wakeWord
-                if (text == wakeWord || text.contains(wakeWord)) {
-                    _uiState.update { it.copy(wakeWordTriggered = text, micState = MicState.OFF) }
-                    chimePlayer.play()
-                    vibrateForWakeWord()
-                    postWakeWordNotification()
-                    // Stop and start again to clear the hypothesis buffer for the next detection
-                    recognizer?.stop()
-                    recognizer?.startListening(HOT_WORD_SEARCH)
-                }
-            }
-
-            override fun onResult(hypothesis: Hypothesis?) {
-                _uiState.update { it.copy(micState = MicState.LISTENING) }
-            }
-
-            override fun onError(e: Exception) {
-                Log.e(TAG, "onError()", e)
-            }
-
-            override fun onTimeout() {}
-        }
+    private var engineState = EngineState()
 
     init {
         checkPermissions()
         viewModelScope.launch {
+            engine.state.collect {
+                engineState = it
+                applyEngineState()
+            }
+        }
+        viewModelScope.launch {
             preferencesManager.wakeWordFlow.collectLatest { word ->
-                // Load the saved sensitivity before the first setup() so the recognizer never
-                // starts with the default and then restarts.
-                preferencesManager.sensitivityFlow.firstOrNull()?.let { saved ->
-                    _uiState.update { it.copy(sensitivity = saved.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)) }
-                }
                 val wakeWord = word ?: application.getString(R.string.default_wake_word)
                 if (_uiState.value.wakeWord != wakeWord) {
                     _uiState.update { it.copy(wakeWord = wakeWord) }
                     Log.d(TAG, "wakeWord updated to $wakeWord")
-                    shutdownRecognizer()
-                    setup()
+                }
+            }
+        }
+        viewModelScope.launch {
+            preferencesManager.sensitivityFlow.collectLatest { saved ->
+                saved?.let { value ->
+                    _uiState.update { it.copy(sensitivity = value.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)) }
                 }
             }
         }
@@ -130,7 +85,23 @@ class ListenerViewModel @Inject constructor(
                 _uiState.update { it.copy(detectionAction = action) }
             }
         }
+        viewModelScope.launch {
+            preferencesManager.alertSettingsFlow.collectLatest { settings ->
+                _uiState.update { it.copy(alertSettings = settings) }
+            }
+        }
         loadDictionaryWords()
+    }
+
+    /** Mirrors the engine into the UI state. Without permission the mic is shown as disabled. */
+    private fun applyEngineState() {
+        _uiState.update {
+            it.copy(
+                micState = if (it.isMicrophonePermissionGranted) engineState.micState else MicState.DISABLED_NO_PERMISSION,
+                wakeWordTriggered = engineState.wakeWordTriggered,
+                isMuted = engineState.isMuted,
+            )
+        }
     }
 
     fun checkPermissions() {
@@ -170,6 +141,7 @@ class ListenerViewModel @Inject constructor(
                 supportsMicrophoneToggle = supportsToggle,
             )
         }
+        applyEngineState()
     }
 
     private fun loadDictionaryWords() {
@@ -179,81 +151,55 @@ class ListenerViewModel @Inject constructor(
         }
     }
 
+    /** Re-checks permissions and lets a running engine recover (for example after a grant). */
     fun setup() {
         checkPermissions()
-        if (!_uiState.value.isMicrophonePermissionGranted) {
-            _uiState.update { it.copy(micState = MicState.DISABLED_NO_PERMISSION) }
-            return
-        }
-
-        val wakeWord = _uiState.value.wakeWord
-        if (wakeWord.isBlank()) {
-            Log.w(TAG, "setup: wake word is empty, skipping")
-            return
-        }
-
-        val tuning = KeywordTuning.forSensitivity(_uiState.value.sensitivity)
-        Log.d(TAG, "setup: wakeWord=$wakeWord tuning=$tuning")
-
-        setupJob?.cancel()
-        setupJob =
-            viewModelScope.launch {
-                withContext(Dispatchers.IO) {
-                    recognizer?.teardown()
-                    recognizer = null
-                }
-                try {
-                    val newRecognizer =
-                        withContext(Dispatchers.IO) {
-                            val assets = Assets(application)
-                            val assetsDir = assets.syncAssets()
-                            SpeechRecognizerSetup
-                                .defaultSetup()
-                                .setAcousticModel(File(assetsDir, "models/en-us-ptm"))
-                                .setDictionary(File(assetsDir, "models/lm/words.dic"))
-                                .setKeywordThreshold(tuning.threshold)
-                                .setFloat("-kws_plp", tuning.phoneLoopProbability.toDouble())
-                                .setInteger("-kws_delay", tuning.delayFrames)
-                                .recognizer
-                        }
-                    newRecognizer.addKeyphraseSearch(HOT_WORD_SEARCH, wakeWord)
-                    newRecognizer.addListener(recognitionListener)
-                    newRecognizer.startListening(HOT_WORD_SEARCH)
-                    recognizer = newRecognizer
-                    _uiState.update { it.copy(micState = MicState.LISTENING) }
-                    Log.d(TAG, "setup: listening for \"$wakeWord\"")
-                } catch (e: IOException) {
-                    Log.e(TAG, "setup() failed", e)
-                    _uiState.update { it.copy(micState = MicState.DISABLED_NO_PERMISSION) }
-                }
-            }
-    }
-
-    fun shutdownRecognizer() {
-        setupJob?.cancel()
-        recognizer?.teardown()
-        recognizer = null
-        _uiState.update { it.copy(micState = MicState.OFF, wakeWordTriggered = null) }
+        engine.refresh()
     }
 
     fun setSensitivity(value: Int) {
-        if (_uiState.value.sensitivity == value.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)) return
         val clamped = value.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)
+        if (_uiState.value.sensitivity == clamped) return
         _uiState.update { it.copy(sensitivity = clamped) }
+        // The engine follows the saved value and restarts the recognizer with it.
         viewModelScope.launch { preferencesManager.setSensitivity(clamped) }
-        shutdownRecognizer()
-        setup()
+    }
+
+    /**
+     * Mute stops listening right now and keeps it stopped (including across onResume) until unmuted.
+     * It is deliberately not persisted: a fresh launch listens again.
+     */
+    fun setMuted(muted: Boolean) {
+        engine.setMuted(muted)
     }
 
     fun setWakeWord(word: String) {
+        val phrase = WakePhrase.normalize(word)
+        if (phrase.isEmpty()) return
         viewModelScope.launch {
-            preferencesManager.updateWakeWord(word)
+            preferencesManager.updateWakeWord(phrase)
         }
     }
 
-    fun clearWakeWordTriggered() {
+    fun setAlertSound(sound: AlertSound) {
+        viewModelScope.launch { preferencesManager.setAlertSound(sound) }
+    }
+
+    fun setAlertDuration(duration: AlertDuration) {
+        viewModelScope.launch { preferencesManager.setAlertDuration(duration) }
+    }
+
+    /** Plays the alert with the current settings so the user can hear what a detection sounds like. */
+    fun previewAlert(settings: AlertSettings = _uiState.value.alertSettings) {
+        chimePlayer.play(settings)
+    }
+
+    fun stopAlert() {
         chimePlayer.stop()
-        _uiState.update { it.copy(wakeWordTriggered = null) }
+    }
+
+    fun clearWakeWordTriggered() {
+        engine.clearTriggered()
     }
 
     fun setDetectionAction(action: DetectionAction) {
@@ -268,58 +214,8 @@ class ListenerViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() {
-        shutdownRecognizer()
-        chimePlayer.stop()
-        super.onCleared()
-    }
-
-    private fun vibrateForWakeWord() {
-        val pattern = NotificationUtils.VIBRATION_PATTERN
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            application
-                .getSystemService(VibratorManager::class.java)
-                ?.defaultVibrator
-                ?.vibrate(VibrationEffect.createWaveform(pattern, -1))
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            @Suppress("DEPRECATION")
-            (application.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
-                ?.vibrate(VibrationEffect.createWaveform(pattern, -1))
-        } else {
-            @Suppress("DEPRECATION")
-            (application.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
-                ?.vibrate(pattern, -1)
-        }
-    }
-
-    private fun postWakeWordNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(
-                application,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        val nm = application.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        NotificationUtils.initChannels(application)
-        nm.notify(
-            NotificationUtils.NOTIFICATION_ID_HOT_WORD,
-            NotificationUtils.createHotWordNotification(application, _uiState.value.detectionAction),
-        )
-    }
-
-    private fun SpeechRecognizer.teardown() {
-        removeListener(recognitionListener)
-        cancel()
-        stop()
-        shutdown()
-    }
-
     companion object {
         private const val TAG = "ListenerViewModel"
-        private const val HOT_WORD_SEARCH = "HOT_WORD_SEARCH"
         const val MIN_SENSITIVITY = KeywordTuning.MIN_SENSITIVITY
         const val MAX_SENSITIVITY = KeywordTuning.MAX_SENSITIVITY
         const val DEFAULT_SENSITIVITY = KeywordTuning.DEFAULT_SENSITIVITY
