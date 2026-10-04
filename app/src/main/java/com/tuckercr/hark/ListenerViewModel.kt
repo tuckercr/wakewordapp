@@ -50,6 +50,7 @@ data class ListenerUiState(
     val isMicrophonePrivacyEnabled: Boolean = false,
     val supportsMicrophoneToggle: Boolean = false,
     val detectionAction: DetectionAction = DetectionAction.Default,
+    val alertSettings: AlertSettings = AlertSettings(),
 )
 
 @HiltViewModel
@@ -87,7 +88,7 @@ class ListenerViewModel @Inject constructor(
                 val wakeWord = _uiState.value.wakeWord
                 if (text == wakeWord || text.contains(wakeWord)) {
                     _uiState.update { it.copy(wakeWordTriggered = text, micState = MicState.OFF) }
-                    chimePlayer.play()
+                    chimePlayer.play(_uiState.value.alertSettings)
                     vibrateForWakeWord()
                     postWakeWordNotification()
                     // Stop and start again to clear the hypothesis buffer for the next detection
@@ -128,6 +129,11 @@ class ListenerViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesManager.detectionActionFlow.collectLatest { action ->
                 _uiState.update { it.copy(detectionAction = action) }
+            }
+        }
+        viewModelScope.launch {
+            preferencesManager.alertSettingsFlow.collectLatest { settings ->
+                _uiState.update { it.copy(alertSettings = settings) }
             }
         }
         loadDictionaryWords()
@@ -246,9 +252,28 @@ class ListenerViewModel @Inject constructor(
     }
 
     fun setWakeWord(word: String) {
+        val phrase = WakePhrase.normalize(word)
+        if (phrase.isEmpty()) return
         viewModelScope.launch {
-            preferencesManager.updateWakeWord(word)
+            preferencesManager.updateWakeWord(phrase)
         }
+    }
+
+    fun setAlertSound(sound: AlertSound) {
+        viewModelScope.launch { preferencesManager.setAlertSound(sound) }
+    }
+
+    fun setAlertDuration(duration: AlertDuration) {
+        viewModelScope.launch { preferencesManager.setAlertDuration(duration) }
+    }
+
+    /** Plays the alert with the current settings so the user can hear what a detection sounds like. */
+    fun previewAlert(settings: AlertSettings = _uiState.value.alertSettings) {
+        chimePlayer.play(settings)
+    }
+
+    fun stopAlert() {
+        chimePlayer.stop()
     }
 
     fun clearWakeWordTriggered() {

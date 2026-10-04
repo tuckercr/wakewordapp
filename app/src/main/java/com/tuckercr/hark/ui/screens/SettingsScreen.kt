@@ -1,9 +1,16 @@
 package com.tuckercr.hark.ui.screens
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +21,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -24,12 +34,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -39,9 +51,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.IntentCompat
+import com.tuckercr.hark.AlertDuration
+import com.tuckercr.hark.AlertSettings
+import com.tuckercr.hark.AlertSound
 import com.tuckercr.hark.DetectionAction
 import com.tuckercr.hark.ListenerViewModel
 import com.tuckercr.hark.R
@@ -54,10 +71,30 @@ fun SettingsScreen(
     onSensitivityChanged: (Int) -> Unit,
     detectionAction: DetectionAction,
     onDetectionActionChanged: (DetectionAction) -> Unit,
+    alertSettings: AlertSettings,
+    onAlertSoundChanged: (AlertSound) -> Unit,
+    onAlertDurationChanged: (AlertDuration) -> Unit,
+    onPreviewAlert: () -> Unit,
+    onStopAlert: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showPicker by remember { mutableStateOf(false) }
+
+    // A test sound must not keep playing after leaving this screen.
+    DisposableEffect(Unit) { onDispose { onStopAlert() } }
+
+    val soundPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val picked =
+                    result.data?.let {
+                        IntentCompat.getParcelableExtra(it, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+                    }
+                val defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)?.toString()
+                onAlertSoundChanged(AlertSound.fromPickedUri(picked?.toString(), defaultUri))
+            }
+        }
 
     if (showPicker) {
         AppPickerDialog(
@@ -91,6 +128,7 @@ fun SettingsScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
             Text(
@@ -151,7 +189,121 @@ fun SettingsScreen(
             OutlinedButton(onClick = { showPicker = true }) {
                 Text(stringResource(R.string.settings_action_choose))
             }
+
+            Spacer(Modifier.height(32.dp))
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text = stringResource(R.string.settings_alert_sound_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = alertSoundLabel(alertSettings.sound),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val context = LocalContext.current
+                OutlinedButton(onClick = { soundPicker.launch(ringtonePickerIntent(context, alertSettings.sound)) }) {
+                    Text(stringResource(R.string.settings_alert_sound_choose))
+                }
+                OutlinedButton(onClick = onPreviewAlert) {
+                    Text(stringResource(R.string.settings_alert_sound_test))
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text = stringResource(R.string.settings_alert_duration_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            AlertDuration.entries.forEach { duration ->
+                DurationRow(
+                    label = stringResource(duration.labelRes()),
+                    selected = alertSettings.duration == duration,
+                    onClick = { onAlertDurationChanged(duration) },
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun alertSoundLabel(sound: AlertSound): String {
+    val context = LocalContext.current
+    return when (sound) {
+        is AlertSound.Default -> stringResource(R.string.settings_alert_sound_default)
+        is AlertSound.Silent -> stringResource(R.string.settings_alert_sound_silent)
+        is AlertSound.Custom ->
+            remember(sound.uri) {
+                runCatching { RingtoneManager.getRingtone(context, Uri.parse(sound.uri))?.getTitle(context) }.getOrNull()
+            } ?: stringResource(R.string.settings_alert_sound_custom)
+    }
+}
+
+private fun ringtonePickerIntent(
+    context: Context,
+    current: AlertSound,
+): Intent {
+    val defaultUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+    val existing =
+        when (current) {
+            is AlertSound.Default -> defaultUri
+            is AlertSound.Silent -> null
+            is AlertSound.Custom -> Uri.parse(current.uri)
+        }
+    return Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALL)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, context.getString(R.string.settings_alert_sound_title))
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, defaultUri)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existing)
+    }
+}
+
+private fun AlertDuration.labelRes(): Int =
+    when (this) {
+        AlertDuration.ONCE -> R.string.settings_duration_once
+        AlertDuration.SECONDS_5 -> R.string.settings_duration_5s
+        AlertDuration.SECONDS_10 -> R.string.settings_duration_10s
+        AlertDuration.SECONDS_30 -> R.string.settings_duration_30s
+        AlertDuration.UNTIL_DISMISSED -> R.string.settings_duration_until_dismissed
+    }
+
+@Composable
+private fun DurationRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+                .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(
+            text = label,
+            modifier = Modifier.padding(start = 12.dp),
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 
@@ -251,6 +403,11 @@ private fun SettingsScreenPreview() {
             onSensitivityChanged = {},
             detectionAction = DetectionAction.Default,
             onDetectionActionChanged = {},
+            alertSettings = AlertSettings(),
+            onAlertSoundChanged = {},
+            onAlertDurationChanged = {},
+            onPreviewAlert = {},
+            onStopAlert = {},
             onBack = {},
         )
     }

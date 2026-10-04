@@ -178,6 +178,11 @@ private fun HarkApp(
                 onSensitivityChanged = viewModel::setSensitivity,
                 detectionAction = uiState.detectionAction,
                 onDetectionActionChanged = viewModel::setDetectionAction,
+                alertSettings = uiState.alertSettings,
+                onAlertSoundChanged = viewModel::setAlertSound,
+                onAlertDurationChanged = viewModel::setAlertDuration,
+                onPreviewAlert = { viewModel.previewAlert() },
+                onStopAlert = viewModel::stopAlert,
                 onBack = { navController.popBackStack() },
             )
         }
