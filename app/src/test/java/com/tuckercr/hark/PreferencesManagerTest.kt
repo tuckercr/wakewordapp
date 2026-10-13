@@ -58,6 +58,45 @@ class PreferencesManagerTest {
         }
 
     @Test
+    fun `alertSettingsFlow defaults to the default sound for five seconds`() =
+        runBlocking {
+            assertEquals(AlertSettings(AlertSound.Default, AlertDuration.SECONDS_5), createManager().alertSettingsFlow.first())
+        }
+
+    @Test
+    fun `setAlertSound persists a custom sound`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setAlertSound(AlertSound.Custom("content://media/internal/audio/media/7"))
+            assertEquals(AlertSound.Custom("content://media/internal/audio/media/7"), pm.alertSettingsFlow.first().sound)
+        }
+
+    @Test
+    fun `setAlertSound persists silent`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setAlertSound(AlertSound.Silent)
+            assertEquals(AlertSound.Silent, pm.alertSettingsFlow.first().sound)
+        }
+
+    @Test
+    fun `setAlertSound Default after Silent resets to the default sound`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setAlertSound(AlertSound.Silent)
+            pm.setAlertSound(AlertSound.Default)
+            assertEquals(AlertSound.Default, pm.alertSettingsFlow.first().sound)
+        }
+
+    @Test
+    fun `setAlertDuration persists the duration`() =
+        runBlocking<Unit> {
+            val pm = createManager()
+            pm.setAlertDuration(AlertDuration.UNTIL_DISMISSED)
+            assertEquals(AlertDuration.UNTIL_DISMISSED, pm.alertSettingsFlow.first().duration)
+        }
+
+    @Test
     fun `updateWakeWord overwrites the previous value`() =
         runBlocking<Unit> {
             val pm = createManager()

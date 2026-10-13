@@ -24,4 +24,9 @@ class MainActivityTest {
     fun `service does not start without permissions`() {
         assertFalse(shouldStartListenerService("hark", hasPermission = false))
     }
+
+    @Test
+    fun `service does not start while muted`() {
+        assertFalse(shouldStartListenerService("hark", hasPermission = true, muted = true))
+    }
 }

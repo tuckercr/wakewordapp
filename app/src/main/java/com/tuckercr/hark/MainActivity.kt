@@ -65,13 +65,15 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 viewModel.uiState
-                    .map { it.wakeWord }
+                    .map { it.wakeWord to it.isMuted }
                     .distinctUntilChanged()
-                    .collect { wakeWord ->
-                        if (shouldStartListenerService(wakeWord, hasListenerPermissions())) {
-                            startForegroundService(
-                                ListenerService.createStartForegroundIntent(this@MainActivity, wakeWord),
-                            )
+                    .collect { (wakeWord, muted) ->
+                        when {
+                            muted -> startService(ListenerService.createStopForegroundIntent(this@MainActivity))
+                            shouldStartListenerService(wakeWord, hasListenerPermissions()) ->
+                                startForegroundService(
+                                    ListenerService.createStartForegroundIntent(this@MainActivity, wakeWord),
+                                )
                         }
                     }
             }
@@ -113,6 +115,8 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing) { // Only stop if NOT a configuration change
             startService(ListenerService.createStopForegroundIntent(this))
+            // Mute is not persisted: the next launch listens again.
+            viewModel.setMuted(false)
         }
         super.onDestroy()
     }
@@ -125,7 +129,8 @@ class MainActivity : ComponentActivity() {
 internal fun shouldStartListenerService(
     wakeWord: String,
     hasPermission: Boolean,
-): Boolean = wakeWord.isNotBlank() && hasPermission
+    muted: Boolean = false,
+): Boolean = wakeWord.isNotBlank() && hasPermission && !muted
 
 @Composable
 private fun HarkApp(
@@ -169,6 +174,7 @@ private fun HarkApp(
             ListenerScreen(
                 uiState = uiState,
                 onWakeWordSelected = viewModel::setWakeWord,
+                onMuteChanged = viewModel::setMuted,
                 onSettingsClicked = { navController.navigate("settings") },
             )
         }
@@ -178,6 +184,11 @@ private fun HarkApp(
                 onSensitivityChanged = viewModel::setSensitivity,
                 detectionAction = uiState.detectionAction,
                 onDetectionActionChanged = viewModel::setDetectionAction,
+                alertSettings = uiState.alertSettings,
+                onAlertSoundChanged = viewModel::setAlertSound,
+                onAlertDurationChanged = viewModel::setAlertDuration,
+                onPreviewAlert = { viewModel.previewAlert() },
+                onStopAlert = viewModel::stopAlert,
                 onBack = { navController.popBackStack() },
             )
         }

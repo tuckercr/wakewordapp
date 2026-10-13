@@ -39,6 +39,23 @@ data class KeywordTuning(
                 KeywordTuning(1e-30f, 0.1f, 10),
             )
 
-        fun forSensitivity(sensitivity: Int): KeywordTuning = LEVELS[sensitivity.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY) - 1]
+        /** Levels a two-word phrase shifts toward the lenient end, see [forSensitivity]. */
+        private const val LEVELS_PER_EXTRA_WORD = 3
+
+        /**
+         * A longer phrase is more distinctive, so the strict delay settings that suit a single short
+         * word make it almost deaf. Measured on "okay harp" with the same synthetic voices: at the
+         * single-word default (level 4) only about 9% of utterances were heard, while level 7
+         * heard about 23% with a false alarm rate on par with "hark" at its default. Each extra word
+         * therefore starts [LEVELS_PER_EXTRA_WORD] levels more lenient.
+         */
+        fun forSensitivity(
+            sensitivity: Int,
+            wordCount: Int = 1,
+        ): KeywordTuning {
+            val level = sensitivity.coerceIn(MIN_SENSITIVITY, MAX_SENSITIVITY)
+            val shifted = level + (wordCount.coerceAtLeast(1) - 1) * LEVELS_PER_EXTRA_WORD
+            return LEVELS[shifted.coerceAtMost(MAX_SENSITIVITY) - 1]
+        }
     }
 }
