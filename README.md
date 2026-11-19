@@ -103,3 +103,7 @@ CI runs `./gradlew lint test build` and `./gradlew ktlintCheck` on every push an
 | `FOREGROUND_SERVICE_MICROPHONE` | Keep the listener alive in the background |
 | `VIBRATE` | Vibrate when the word is heard |
 | `RECEIVE_BOOT_COMPLETED` | Restart the listener after the device reboots |
+
+## Author
+
+Built by [Colin Tucker](https://fangjet.com), a senior Android engineer. More projects at [fangjet.com/projects](https://fangjet.com/projects).
